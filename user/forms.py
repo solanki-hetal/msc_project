@@ -16,7 +16,9 @@ class UserLoginForm(forms.Form):
 
     def clean(self) -> dict[str, Any]:
         cleaned_data = super().clean()
-        email, password = cleaned_data.get('email',False), cleaned_data.get('password',False)
+        email, password = cleaned_data.get("email", False), cleaned_data.get(
+            "password", False
+        )
         if email and password:
             user = authenticate(
                 self.request,
@@ -34,6 +36,26 @@ class UserCreationForm(forms.ModelForm):
     email = forms.EmailField()
     password = forms.CharField(widget=forms.PasswordInput)
     confirm_password = forms.CharField(widget=forms.PasswordInput)
+
+    def __init__(self, *args, **kwargs):
+        self.request = kwargs.pop("request", None)
+        super().__init__(*args, **kwargs)
+
+    def clean_email(self):
+        data = self.cleaned_data.get("email", False)
+        if get_user_model().objects.filter(email=data).exists():
+            raise forms.ValidationError("Email already exists")
+        return data
+    
+
+    def clean(self) -> dict[str, Any]:
+        cleaned_data = super().clean()
+        password = cleaned_data.get("password", False)
+        confirm_password = cleaned_data.get("confirm_password", False)
+        if password and confirm_password:
+            if password != confirm_password:
+                raise forms.ValidationError({"password": ["Passwords do not match"]})
+        return cleaned_data
 
     class Meta:
         model = get_user_model()
