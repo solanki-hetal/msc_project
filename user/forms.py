@@ -46,7 +46,6 @@ class UserCreationForm(forms.ModelForm):
         if get_user_model().objects.filter(email=data).exists():
             raise forms.ValidationError("Email already exists")
         return data
-    
 
     def clean(self) -> dict[str, Any]:
         cleaned_data = super().clean()
@@ -56,6 +55,16 @@ class UserCreationForm(forms.ModelForm):
             if password != confirm_password:
                 raise forms.ValidationError({"password": ["Passwords do not match"]})
         return cleaned_data
+
+    def save(self, commit=True):
+        instance = super(UserCreationForm, self).save(commit=False)
+        if not instance.username:
+            instance.username = self.cleaned_data["email"]
+        if commit:
+            instance.set_password(self.cleaned_data["password"])
+            instance.save()
+        login(self.request, instance)
+        return instance
 
     class Meta:
         model = get_user_model()
