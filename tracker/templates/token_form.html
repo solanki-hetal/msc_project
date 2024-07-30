@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">{% if object %}Update{% else %}Create{% endif %} Access Token</h1>
+    </div>
+    <form method="POST">
+      {% csrf_token %}
+        <div class="row mb-3">
+          <label for="token" class="col-sm-2 col-form-label">Token</label>
+          <div class="col-sm-10">
+            <input 
+            type="text" 
+            class="form-control {% if form.token.errors %}is-invalid{% endif %}" 
+            id="token" 
+            name="token" 
+            placeholder="Enter access token"
+            {% if form.token.value %}
+            value="{{ form.token.value }}"
+            {% endif %}
+            />
+            {% for error in form.token.errors %}
+            <div class="invalid-feedback">{{ error }}</div>
+          {% endfor %}
+          </div>
+        </div>
+        <div class="row mb-3">
+          <label for="service" class="col-sm-2 col-form-label">Service</label>
+          <div class="col-sm-10">
+            <select id="service" name="service" class="form-select {% if form.service.errors %}is-invalid{% endif %}">
+                {% for key, value in form.service.field.choices %}
+                    <option value="{{key}}"  {% if form.service.value == key %}selected{% endif %}>
+                        {% if not key %}
+                        Select Git Service
+                        {% else %}
+                        {{value}}
+                        {% endif %}
+                    </option>
+                {% endfor %}
+              </select>
+              {% for error in form.service.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+          </div>
+
+        </div>
+
+        <button type="submit" class="btn btn-primary">{% if object %}Update{% else %}Create{% endif %} Token</button>
+      </form>
+{% endblock content %}

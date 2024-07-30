@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">Access Tokens</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <a href="{% url "tracker:token_create" %}" class="btn btn-sm btn-outline-primary">Create Token</a>
+            </div>
+        </div>
+    </div>
+    <div class="table-responsive mt-3">
+        <table class="table table-bordered">
+            <thead>
+              <tr>
+                <th scope="col">Token</th>
+                <th scope="col">Service</th>
+                <th scope="col">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for token in object_list %}
+              <tr>
+                <td>{{ token.token }}</td>
+                <td>{{ token.service }}</td>
+                <td>
+                    <a class="text-primary" href="{% url "tracker:token_edit" token.pk %}" role="button">
+                        <i class="bi bi-pencil-square"></i>
+                    </a>
+                </td>
+              </tr>
+            {% endfor %}            
+            </tbody>
+          </table>
+    </div>
+{% endblock content %}

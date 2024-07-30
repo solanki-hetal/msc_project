@@ -60,10 +60,10 @@ class UserCreationForm(forms.ModelForm):
         instance = super(UserCreationForm, self).save(commit=False)
         if not instance.username:
             instance.username = self.cleaned_data["email"]
+        instance.is_active = False
         if commit:
             instance.set_password(self.cleaned_data["password"])
             instance.save()
-        login(self.request, instance)
         return instance
 
     class Meta:

@@ -29,8 +29,8 @@ class LoginView(FormView, SuccessMessageMixin):
 class RegisterView(FormView, SuccessMessageMixin):
     template_name = "register.html"
     form_class = UserCreationForm
-    success_url = reverse_lazy("tracker:home")
-    success_message = "You are successfully registered"
+    success_url = reverse_lazy("user:login")
+    success_message = "You are successfully registered. Check you email for verification."
 
     def get_form_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_form_kwargs()
