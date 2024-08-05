@@ -1,8 +1,11 @@
 {% extends "base.html" %}
+{% load crispy_forms_tags %}
 {% block content %}
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
         <h1 class="h2">{% if object %}Update{% else %}Create{% endif %} Access Token</h1>
     </div>
+    {% crispy form form.helper %}
+
     <form method="POST">
       {% csrf_token %}
         <div class="row mb-3">

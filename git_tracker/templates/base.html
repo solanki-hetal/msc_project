@@ -20,6 +20,7 @@
 
     <div class="container-fluid h-100">
         <div class="row h-100">
+            
             <div class="sidebar border border-right col-md-3 col-lg-2 p-0 bg-body-tertiary">
             <div class="offcanvas-md offcanvas-end bg-body-tertiary" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
                 <div class="offcanvas-header">
@@ -28,32 +29,30 @@
                 </div>
                 <div class="offcanvas-body d-md-flex flex-column p-0 pt-lg-3 overflow-y-auto">
                 <ul class="nav flex-column">
+                    {% for nav in navigation %}
                     <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center gap-2 active" aria-current="page" href="{% url "tracker:home" %}">
-                        <i class="bi bi-house-fill"></i>
-                        Dashboard
+                    <a class="nav-link d-flex align-items-center gap-2 {% if nav.active %}active{% endif %}" aria-current="page" href="{% url nav.url %}">
+                        <i class="bi {{ nav.icon }}"></i>
+                        {{ nav.name }}
                     </a>
                     </li>
-                    <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center gap-2 active" aria-current="page" href="{% url "tracker:token_list" %}">
-                        <i class="bi bi-shield-lock"></i>
-                        Access Tokens
-                    </a>
-                    </li>
-                </ul>
-                <ul class="nav flex-column mb-auto">
-                    <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center gap-2" href="{% url "user:logout" %}">
-                        <i class="bi bi-door-closed"></i>
-                        Sign out
-                    </a>
-                    </li>
+                    {% endfor %}
                 </ul>
                 </div>
             </div>
             </div>
 
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                  {% if alerts %}
+                  <div class="messages  mt-2">
+                      {% for alert in alerts %}
+                      <div class="alert {{alert.class_name}} d-flex"> 
+                        <i class="bi {{alert.icon}} me-2"></i> 
+                        {{ alert }} {{ message.tags }}
+                    </div>
+                      {% endfor %}
+                </div>
+                  {% endif %}
             {% block content %}{% endblock content %}
             </main>
         </div>

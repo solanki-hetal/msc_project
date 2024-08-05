@@ -1,6 +1,10 @@
 :root {
     --bs-body-bg: var(--bs-gray-100);
+    --bs-primary: #314CB6;
+    --bs-dark: #071108;
+    --bs-secondary: #12130F;
 }
+
 
 .bi {
     display: inline-block;
@@ -30,7 +34,8 @@
 }
 
 .sidebar .nav-link.active {
-    color: #2470dc;
+    background-color: var(--bs-primary);
+    color: white;
 }
 
 .sidebar-heading {
