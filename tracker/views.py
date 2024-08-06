@@ -1,15 +1,8 @@
-from typing import Any
-
 from django.contrib.auth.decorators import login_required
-from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
-from django.views.generic import CreateView, ListView, UpdateView
 
-from core.views import BaseCreateView, BaseUpdateView, BaseListView
+from core.views import BaseCreateView, BaseListView, BaseUpdateView
 from tracker import forms, models
-from django.contrib import messages
-
-# Create your views here.
 
 
 @login_required
