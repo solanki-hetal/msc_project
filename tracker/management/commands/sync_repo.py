@@ -97,12 +97,12 @@ class Command(BaseCommand):
             },
         )
 
-    def fetch_repositories(self, user):
+    def fetch_repositories(self, git_user, user):
         """
         Fetch and print repositories for the authenticated user.
         """
         try:
-            _repos = user.get_repos()
+            _repos = git_user.get_repos()
             print("Repositories:")
             owners = {}
             repositories = []
@@ -114,6 +114,7 @@ class Command(BaseCommand):
                 self.stdout.write(f"Synced - {repo.name}", self.style.SUCCESS)
                 self.stdout.write("-------------------------------------------------")
                 break
+            user.repositories.set(repositories)
             return repositories
         except GithubException as e:
             self.stderr.write(f"Failed to fetch repositories: {e}")
@@ -139,8 +140,8 @@ class Command(BaseCommand):
         tokens = models.GitToken.objects.filter(is_active=True)
         for token in tokens:
             github_client = Github(token.token)
-            user = self.fetch_user_details(github_client)
-            if user:
-                repos = self.fetch_repositories(user)
+            git_user = self.fetch_user_details(github_client)
+            if git_user:
+                repos = self.fetch_repositories(git_user, token.user)
                 # for repo in repos:
                 # self.fetch_commits(repo)

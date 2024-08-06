@@ -4,7 +4,7 @@
         <h1 class="h2">Access Tokens</h1>
         <div class="btn-toolbar mb-2 mb-md-0">
             <div class="btn-group me-2">
-                <a href="{% url "tracker:token_create" %}" class="btn btn-sm btn-outline-primary">Create Token</a>
+                <a href="{% url "tracker:gittoken_create" %}" class="btn btn-sm btn-outline-primary">Create Token</a>
             </div>
         </div>
     </div>
@@ -23,7 +23,7 @@
                 <td>{{ token.token }}</td>
                 <td>{{ token.service }}</td>
                 <td>
-                    <a class="text-primary" href="{% url "tracker:token_edit" token.pk %}" role="button">
+                    <a class="text-primary" href="{% url "tracker:gittoken_edit" token.pk %}" role="button">
                         <i class="bi bi-pencil-square"></i>
                     </a>
                 </td>

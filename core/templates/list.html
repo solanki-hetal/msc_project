@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load extras %}
+{% block content %}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">{{ title }}</h1>
+        {% if can_create %}
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <a href="{{ create_url }}" class="btn btn-sm btn-outline-primary">{{ create_button_label }}</a>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+    <div class="table-responsive mt-3">
+        <table class="table table-bordered">
+            <thead>
+              <tr>
+                {% for f in list_display %}
+                <th scope="col">{{ field_labels|get_value:f }}</th>
+                {% endfor %}
+                {% if can_edit or can_delete %}
+                <th scope="col">Action</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+            {% for object in object_list %}
+              <tr>
+                {% for f in list_display %}
+                <td>
+                    {% if f in boolean_fields %}
+                        {% if object|get_property:f %}
+                            <i class="bi bi-check-circle-fill me-2 text-success"></i>
+                        {% else %}
+                            <i class="bi bi-x-circle-fill me-2 text-danger"></i>
+                        {% endif %}
+                    {% else %}
+                        {{ object|get_property:f }}
+                    {% endif %}
+                </td>
+                {% endfor %}
+                <td>
+                    {% if can_edit %}
+                    <a class="text-primary text-decoration-none" href="{{ object.get_absolute_url }}" role="button">
+                        <i class="bi bi-pencil-square"></i>
+                    </a>
+                    {% endif %}
+                    {% if can_delete %}
+                    <a class="text-danger text-decoration-none" href="{{ object.get_delete_url }}" role="button">
+                        <i class="bi bi-trash"></i>
+                    </a>
+                    {% endif %}
+                </td>
+              </tr>
+            {% endfor %}            
+            </tbody>
+          </table>
+    </div>
+{% endblock content %}

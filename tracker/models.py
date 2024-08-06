@@ -19,12 +19,14 @@ class GitToken(models.Model):
     )
 
     def get_absolute_url(self):
-        return reverse("tracker:token_edit", kwargs={"pk": self.pk})
+        return reverse("tracker:gittoken_edit", kwargs={"pk": self.pk})
 
     def __str__(self) -> str:
         return self.label
 
-
+    class Meta:
+        permissions = [("can_view_all_git_tokens", "Can view all git tokens")]
+     
 class Author(models.Model):
     username = models.CharField(max_length=255, unique=True)
     git_id = models.BigIntegerField(unique=True)
@@ -56,12 +58,13 @@ class Repository(models.Model):
     updated_at = models.DateTimeField(null=True, blank=True)
     pushed_at = models.DateTimeField(null=True, blank=True)
     last_synced_at = models.DateTimeField(null=True, blank=True)
+    users = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="repositories")
 
     def __str__(self) -> str:
         return self.full_name
     class Meta:
         verbose_name_plural = "Repositories"
-        
+        permissions = [("can_view_all_repositories", "Can view all repositories")]
 
 
 class Commit(models.Model):

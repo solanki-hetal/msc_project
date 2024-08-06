@@ -5,7 +5,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.views.generic import CreateView, ListView, UpdateView
 
-from core.views import BaseCreateView, BaseUpdateView
+from core.views import BaseCreateView, BaseUpdateView, BaseListView
 from tracker import forms, models
 from django.contrib import messages
 
@@ -17,14 +17,27 @@ def home(request):
     return render(request, "home.html")
 
 
-
-
-class TokenListView(ListView):
+class TokenListView(BaseListView):
     model = models.GitToken
-    template_name = "token_list.html"
-    context_object_name = "tokens"
+    create_button_label = "Create Token"
+    list_display = ["label", "service", "is_active"]
+
     def get_queryset(self):
+        if self.request.user.has_perm("can_view_all_git_tokens"):
+            return self.model.objects.all()
         return self.model.objects.filter(user=self.request.user)
+
+
+class RepositoryListView(BaseListView):
+    model = models.Repository
+    list_display = ["name", "owner", "private", "language", "last_synced_at"]
+    can_create = False
+    can_edit = False
+
+    def get_queryset(self):
+        if self.request.user.has_perm("can_view_all_repositories"):
+            return self.model.objects.all()
+        return self.model.objects.filter(users=self.request.user)
 
 
 class TokenCreateView(BaseCreateView):

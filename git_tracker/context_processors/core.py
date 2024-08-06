@@ -44,7 +44,8 @@ def navigation(request):
 
     nav = [
         Navigation("bi-house-fill", "Dashboard", "tracker:home", active_url),
-        Navigation("bi-shield-lock", "Access Tokens", "tracker:token_list", active_url),
+        Navigation("bi-shield-lock", "Access Tokens", "tracker:gittoken_list", active_url),
+        Navigation("bi-journal", "Repositories", "tracker:repository_list", active_url),
         Navigation("bi-door-closed", "Sign out", "user:logout", active_url),
     ]
     return {"navigation": nav, "active_url": active_url}
