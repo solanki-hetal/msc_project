@@ -9,4 +9,4 @@ class TokenForm(BaseModelForm):
 
     class Meta:
         model = models.GitToken
-        fields = ["service", "token"]
+        fields = ["service", "label", "token", "is_active"]

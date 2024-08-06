@@ -1,6 +1,9 @@
+import json
 from django.core.management.base import BaseCommand, CommandError
 from tracker import models
 from github import Github, GithubException
+
+from django.utils import timezone
 
 
 class Command(BaseCommand):
@@ -46,18 +49,73 @@ class Command(BaseCommand):
             print(f"Failed to fetch user details: {e}")
             return None
 
+    def insert_or_update_repository(self, repo, owners={}):
+        """
+        Insert or update a repository in the database.
+        """
+        if repo.owner.id not in owners:
+            owner, _ = models.Author.objects.get_or_create(
+                git_id=repo.owner.id,
+                defaults={
+                    "username": repo.owner.login,
+                    "avatar_url": repo.owner.avatar_url,
+                    "html_url": repo.owner.html_url,
+                },
+            )
+            owners[repo.owner.id] = owner
+        else:
+            owner = owners[repo.owner.id]
+        source, _ = (
+            self.insert_or_update_repository(repo.source, owners)
+            if repo.source
+            else (None, None)
+        )
+        parent, _ = (
+            self.insert_or_update_repository(repo.parent, owners)
+            if repo.parent
+            else (None, None)
+        )
+        return models.Repository.objects.update_or_create(
+            git_id=repo.id,
+            owner=owner,
+            defaults={
+                "name": repo.name,
+                "full_name": repo.full_name,
+                "private": repo.private,
+                "html_url": repo.html_url,
+                "description": repo.description,
+                "language": repo.language,
+                "license": repo.license,
+                "default_branch": repo.default_branch,
+                "source": source,
+                "parent": parent,
+                "created_at": repo.created_at,
+                "updated_at": repo.updated_at,
+                "pushed_at": repo.pushed_at,
+                "last_synced_at": timezone.now(),
+            },
+        )
+
     def fetch_repositories(self, user):
         """
         Fetch and print repositories for the authenticated user.
         """
         try:
-            repos = user.get_repos()
+            _repos = user.get_repos()
             print("Repositories:")
-            for repo in repos:
-                print(f"- {repo.name}")
-            return repos
+            owners = {}
+            repositories = []
+            for repo in _repos:
+                self.stdout.write(f"Syncing - {repo.name}",self.style.WARNING)
+                repository, _ = self.insert_or_update_repository(repo, owners)
+                repositories.append(repository)
+                self.fetch_commits(repo)
+                self.stdout.write(f"Synced - {repo.name}",self.style.SUCCESS)
+                self.stdout.write("-------------------------------------------------")
+                break
+            return repositories
         except GithubException as e:
-            print(f"Failed to fetch repositories: {e}")
+            self.stderr.write(f"Failed to fetch repositories: {e}")
             return []
 
     def fetch_commits(self, repository):
@@ -72,11 +130,11 @@ class Command(BaseCommand):
             print(f"Failed to fetch commits for repository {repository.name}: {e}")
 
     def handle(self, *args, **options):
-        tokens = models.GitToken.objects.all()
+        tokens = models.GitToken.objects.filter(is_active=True)
         for token in tokens:
             github_client = Github(token.token)
             user = self.fetch_user_details(github_client)
             if user:
                 repos = self.fetch_repositories(user)
-                for repo in repos:
-                    self.fetch_commits(repo)
+                # for repo in repos:
+                # self.fetch_commits(repo)
