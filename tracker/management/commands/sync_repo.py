@@ -1,4 +1,5 @@
 import json
+import os
 from django.core.management.base import BaseCommand, CommandError
 from tracker import models
 from github import Github, GithubException
@@ -106,11 +107,11 @@ class Command(BaseCommand):
             owners = {}
             repositories = []
             for repo in _repos:
-                self.stdout.write(f"Syncing - {repo.name}",self.style.WARNING)
+                self.stdout.write(f"Syncing - {repo.name}", self.style.WARNING)
                 repository, _ = self.insert_or_update_repository(repo, owners)
                 repositories.append(repository)
                 self.fetch_commits(repo)
-                self.stdout.write(f"Synced - {repo.name}",self.style.SUCCESS)
+                self.stdout.write(f"Synced - {repo.name}", self.style.SUCCESS)
                 self.stdout.write("-------------------------------------------------")
                 break
             return repositories
@@ -125,7 +126,12 @@ class Command(BaseCommand):
         try:
             commits = repository.get_commits()
             for commit in commits:
-                self.print_commit_details(commit)
+                # self.print_commit_details(commit)
+                json.dump(
+                    commit.raw_data,
+                    open(os.path.join("commits", f"{commit.sha}.json"), "w"),
+                    indent=4,
+                )
         except GithubException as e:
             print(f"Failed to fetch commits for repository {repository.name}: {e}")
 
