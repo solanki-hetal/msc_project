@@ -41,6 +41,7 @@ class Author(models.Model):
 
 class RepositoryAction(Enum):
     COMMITS = "commits"
+    ANALYSIS = "analysis"
 
 
 class Repository(models.Model):
@@ -74,10 +75,15 @@ class Repository(models.Model):
     def get_action_url(self, action):
         if action == RepositoryAction.COMMITS:
             return self.get_commit_url()
+        if action == RepositoryAction.ANALYSIS:
+            return self.get_analysis_url()
         return self.get_absolute_url()
 
     def get_commit_url(self):
         return reverse("tracker:commit_list", kwargs={"repository_id": self.pk})
+
+    def get_analysis_url(self):
+        return reverse("tracker:repository_analysis", kwargs={"pk": self.pk})
 
     class Meta:
         verbose_name_plural = "Repositories"

@@ -1,10 +1,10 @@
-from django.shortcuts import render
 from typing import Any
-from django.urls import reverse
-from django.views.generic import ListView, CreateView, UpdateView
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
+
 from django.contrib.messages.views import SuccessMessageMixin
+from django.http import Http404, HttpRequest, HttpResponse
+from django.shortcuts import redirect
+from django.urls import reverse
+from django.views.generic import CreateView, ListView, UpdateView
 
 # Create your views here.
 
@@ -54,7 +54,7 @@ class BaseUpdateView(FormMixin, UpdateView):
 
 
 class ListAction:
-    def __init__(self, label, icon, action, class_name=None,tooltip=None):
+    def __init__(self, label, icon, action, class_name=None, tooltip=None):
         self.label = label
         self.icon = icon
         self.action = action
@@ -75,6 +75,8 @@ class BaseListView(ListView):
     can_edit = True
     can_delete = False
     actions = []
+    paginate_by = 10
+    per_page_options = [10, 25, 50, 100]
 
     def get_title(self):
         if self.title:
@@ -129,6 +131,27 @@ class BaseListView(ListView):
                 _boolean_fields.append(f)
         return _boolean_fields
 
+    def get_paginate_by(self, queryset) -> int | None:
+        return self.request.GET.get("per_page", self.paginate_by)
+
+    def to_query_string(self, **kwargs):
+        query_string = self.request.GET.copy()
+        for key, value in kwargs.items():
+            query_string[key] = value
+        return query_string.urlencode()
+
+    def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        try:
+            return super().get(request, *args, **kwargs)
+        except Http404 as e:
+            queryset = self.get_queryset()
+            paginator = self.get_paginator(queryset, self.get_paginate_by(queryset))
+            if int(request.GET.get("page", 1)) > paginator.num_pages:
+                return redirect(
+                    request.path + "?" + self.to_query_string(page=paginator.num_pages)
+                )
+            raise e
+
     def get_context_data(self, **kwargs) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
         properties = [
@@ -143,11 +166,18 @@ class BaseListView(ListView):
             "list_display",
             "field_labels",
             "actions",
+            "per_page_options",
         ]
         for prop in properties:
             if callable(getattr(self, f"get_{prop}", None)):
                 context[prop] = getattr(self, f"get_{prop}")()
             else:
                 context[prop] = getattr(self, prop)
-
+        paginator = context["paginator"]
+        total_pages = paginator.num_pages
+        current_page = int(self.request.GET.get("page", 1))
+        print(current_page, total_pages)
+        if current_page > total_pages:
+            # Redirect to the last page if the current page exceeds the total number of pages
+            context["page_obj"] = paginator.page(total_pages)
         return context

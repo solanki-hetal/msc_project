@@ -1,12 +1,18 @@
 from typing import Any
+
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Avg, Count, F, Func, Max, Min, Sum
 from django.db.models.query import QuerySet
 from django.shortcuts import render
+from django.utils.timezone import now, timedelta
+from django.views.generic import DetailView
+from django.db.models.functions import ExtractHour
 
 from core.views import BaseCreateView, BaseListView, BaseUpdateView, ListAction
 from tracker import forms, models
 
-from django.contrib.auth.mixins import LoginRequiredMixin
+from .models import Commit, Repository
 
 
 @login_required
@@ -49,7 +55,16 @@ class RepositoryListView(LoginRequiredMixin, BaseListView):
     can_edit = False
     actions = [
         ListAction(
-            "Commits", "bi-eye", models.RepositoryAction.COMMITS, tooltip="View Commits"
+            "Commits",
+            "bi-eye",
+            models.RepositoryAction.COMMITS,
+            tooltip="View Commits",
+        ),
+        ListAction(
+            "Analysis",
+            "bi-graph-up-arrow",
+            models.RepositoryAction.ANALYSIS,
+            tooltip="View Analysis",
         ),
     ]
 
@@ -57,6 +72,58 @@ class RepositoryListView(LoginRequiredMixin, BaseListView):
         if self.request.user.has_perm("can_view_all_repositories"):
             return self.model.objects.all()
         return self.model.objects.filter(users=self.request.user)
+
+
+class RepositoryStatsView(DetailView):
+    model = Repository
+    template_name = "repository_stats.html"
+    context_object_name = "repository"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        repository = self.object
+
+        commit_frequency = (
+            Commit.objects.filter(repository=repository)
+            .values("date__date")
+            .annotate(commit_count=Count("id"))
+            .order_by("date__date")
+        )
+        context["commit_frequency"] = commit_frequency
+
+        # Top Contributors
+        top_contributors = (
+            Commit.objects.filter(repository=repository, author__isnull=False)
+            .values("author__username")
+            .annotate(commit_count=Count("id"))
+            .order_by("-commit_count")[:10]
+        )
+        context["top_contributors"] = top_contributors
+
+        # Commit Size Distribution
+        size_distribution = Commit.objects.filter(repository=repository).aggregate(
+            average_size=Avg("total"), max_size=Max("total"), min_size=Min("total")
+        )
+        context["size_distribution"] = size_distribution
+
+        churn_data = Commit.objects.filter(repository=repository).aggregate(
+            additions=Sum("additions"), deletions=Sum("deletions")
+        )
+
+        churn_rate = churn_data["additions"] + churn_data["deletions"]
+        context["churn_rate"] = churn_rate
+
+        # Commit Time Distribution
+        time_distribution = (
+            Commit.objects.filter(repository=repository)
+            .annotate(hour=ExtractHour(F("commited_at")))
+            .values("hour")
+            .annotate(commit_count=Count("id"))
+            .order_by("hour")
+        )
+        context["time_distribution"] = time_distribution
+
+        return context
 
 
 class CommitListView(LoginRequiredMixin, BaseListView):

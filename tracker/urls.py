@@ -10,13 +10,18 @@ urlpatterns = [
     path("tokens/<int:pk>/edit/", views.TokenEditView.as_view(), name="gittoken_edit"),
     path("repository/", views.RepositoryListView.as_view(), name="repository_list"),
     path(
+        "repository/<int:pk>/analysis/",
+        views.RepositoryStatsView.as_view(),
+        name="repository_analysis",
+    ),
+    path(
         "repository/<int:repository_id>/commits/",
         views.CommitListView.as_view(),
         name="commit_list",
     ),
     path(
-		"repository/<int:repository_id>/commits/<int:commit_id>/",
-		views.CommitDetailView.as_view(),
-		name="commit_detail",
-	),
+        "repository/<int:repository_id>/commits/<int:commit_id>/",
+        views.CommitDetailView.as_view(),
+        name="commit_detail",
+    ),
 ]
