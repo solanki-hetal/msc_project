@@ -10,34 +10,6 @@ from django.utils import timezone
 class Command(BaseCommand):
     help = "Sync repos locally"
 
-    def print_file_details(self, file):
-        """
-        Print details of a file in a commit.
-        """
-        print(f"Status: {file.status}")
-        print(f"Additions: {file.additions}")
-        print(f"Deletions: {file.deletions}")
-        print(f"Changes: {file.changes}")
-        print(f"Patch: {file.patch}")
-        print("------------------")
-        print("------------------")
-        print("------------------")
-
-    def print_commit_details(self, commit):
-        """
-        Print details of a single commit including file changes.
-        """
-        print(f"Commit SHA: {commit.sha}")
-        print(f"Author: {commit.commit.author.name}")
-        print(f"Date: {commit.commit.author.date}")
-        print(f"Message: {commit.commit.message}")
-        print("Files changed:")
-
-        # Fetching details of files changed in the commit
-        for file in commit.files:
-            self.print_file_details(file)
-        print("---")
-
     def fetch_user_details(self, github_client):
         """
         Fetch and return the authenticated user details.
@@ -50,22 +22,26 @@ class Command(BaseCommand):
             print(f"Failed to fetch user details: {e}")
             return None
 
+    def insert_or_update_author(self, author, owners={}):
+        if author.id not in owners:
+            owner, _ = models.Author.objects.get_or_create(
+                git_id=author.id,
+                defaults={
+                    "username": author.login,
+                    "avatar_url": author.avatar_url,
+                    "html_url": author.html_url,
+                },
+            )
+            owners[author.id] = owner
+        else:
+            owner = owners[author.id]
+        return owner
+
     def insert_or_update_repository(self, repo, owners={}):
         """
         Insert or update a repository in the database.
         """
-        if repo.owner.id not in owners:
-            owner, _ = models.Author.objects.get_or_create(
-                git_id=repo.owner.id,
-                defaults={
-                    "username": repo.owner.login,
-                    "avatar_url": repo.owner.avatar_url,
-                    "html_url": repo.owner.html_url,
-                },
-            )
-            owners[repo.owner.id] = owner
-        else:
-            owner = owners[repo.owner.id]
+        owner = self.insert_or_update_author(repo.owner, owners)
         source, _ = (
             self.insert_or_update_repository(repo.source, owners)
             if repo.source
@@ -103,38 +79,76 @@ class Command(BaseCommand):
         """
         try:
             _repos = git_user.get_repos()
-            print("Repositories:")
             owners = {}
             repositories = []
             for repo in _repos:
                 self.stdout.write(f"Syncing - {repo.name}", self.style.WARNING)
                 repository, _ = self.insert_or_update_repository(repo, owners)
                 repositories.append(repository)
-                self.fetch_commits(repo)
+                commits = self.fetch_commits(repo, repository, owners)
+                self.stdout.write(
+                    f"Synced commits - {len(commits)}", self.style.SUCCESS
+                )
                 self.stdout.write(f"Synced - {repo.name}", self.style.SUCCESS)
                 self.stdout.write("-------------------------------------------------")
-                break
             user.repositories.set(repositories)
             return repositories
         except GithubException as e:
             self.stderr.write(f"Failed to fetch repositories: {e}")
             return []
 
-    def fetch_commits(self, repository):
+    def fetch_commits(self, repository, repo_obj, owners={}):
         """
         Fetch and print commits for a given repository.
         """
         try:
-            commits = repository.get_commits()
-            for commit in commits:
-                # self.print_commit_details(commit)
-                json.dump(
-                    commit.raw_data,
-                    open(os.path.join("commits", f"{commit.sha}.json"), "w"),
-                    indent=4,
+            git_commits = repository.get_commits()
+            _commits = []
+            for _commit in git_commits:
+                author = (
+                    self.insert_or_update_author(_commit.author, owners)
+                    if _commit.author
+                    else None
                 )
-        except GithubException as e:
-            print(f"Failed to fetch commits for repository {repository.name}: {e}")
+                committer = (
+                    self.insert_or_update_author(_commit.committer, owners)
+                    if _commit.committer
+                    else None
+                )
+                commit, _ = models.Commit.objects.update_or_create(
+                    repository=repo_obj,
+                    sha=_commit.sha,
+                    defaults={
+                        "message": _commit.commit.message,
+                        "date": _commit.commit.author.date,
+                        "commited_at": _commit.commit.committer.date,
+                        "author": author,
+                        "committer": committer,
+                        "url": _commit.html_url,
+                        "additions": _commit.stats.additions,
+                        "deletions": _commit.stats.deletions,
+                        "total": _commit.stats.total,
+                    },
+                )
+                for file in _commit.files:
+                    models.CommitFile.objects.update_or_create(
+                        commit=commit,
+                        filename=file.filename,
+                        defaults={
+                            "status": file.status,
+                            "additions": file.additions,
+                            "deletions": file.deletions,
+                            "changes": file.changes,
+                            "patch": file.patch,
+                        },
+                    )
+                _commits.append(commit)
+            return _commits
+        except Exception as e:
+            json.dump(_commit.raw_data, open("error.json", "w"), indent=2)
+            raise CommandError(
+                f"Failed to fetch commits for repository {repository.name}: {e}"
+            )
 
     def handle(self, *args, **options):
         tokens = models.GitToken.objects.filter(is_active=True)
@@ -142,6 +156,4 @@ class Command(BaseCommand):
             github_client = Github(token.token)
             git_user = self.fetch_user_details(github_client)
             if git_user:
-                repos = self.fetch_repositories(git_user, token.user)
-                # for repo in repos:
-                # self.fetch_commits(repo)
+                self.fetch_repositories(git_user, token.user)

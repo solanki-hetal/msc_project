@@ -19,9 +19,15 @@
                 {% for f in list_display %}
                 <th scope="col">{{ field_labels|get_value:f }}</th>
                 {% endfor %}
-                {% if can_edit or can_delete %}
-                <th scope="col">Action</th>
+                {% if can_edit %}
+                <th scope="col">Edit</th>
                 {% endif %}
+                {% if can_delete %}
+                <th scope="col">Delete</th>
+                {% endif %}
+                {% for action in actions %}
+                <th scope="col">{{ action.label }}</th>
+                {% endfor %}
               </tr>
             </thead>
             <tbody>
@@ -40,18 +46,43 @@
                     {% endif %}
                 </td>
                 {% endfor %}
+                {% if can_edit %}
                 <td>
-                    {% if can_edit %}
-                    <a class="text-primary text-decoration-none" href="{{ object.get_absolute_url }}" role="button">
+                    <a class="text-primary text-decoration-none" 
+                        href="{{ object.get_absolute_url }}" 
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top"
+                        data-bs-title="Edit {{ object }}"
+                        role="button">
                         <i class="bi bi-pencil-square"></i>
                     </a>
-                    {% endif %}
-                    {% if can_delete %}
-                    <a class="text-danger text-decoration-none" href="{{ object.get_delete_url }}" role="button">
+                </td>
+                {% endif %}
+                {% if can_delete %}
+                <td>
+                    <a class="text-danger text-decoration-none" href="{{ object.get_delete_url }}" 
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top"
+                        data-bs-title="Delete {{ object }}"
+                        role="button">
                         <i class="bi bi-trash"></i>
                     </a>
-                    {% endif %}
                 </td>
+                {% endif %}
+                {% for action in actions %}
+                <td>
+                    <a  class="text-primary text-decoration-none {{ action.class_name }}" 
+                        href="{{ object|get_action_url:action.action }}" 
+                        {% if action.tooltip %}
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top"
+                        data-bs-title="{{ action.tooltip|safe }}"
+                        {% endif %}
+                        role="button">
+                        <i class="bi {{ action.icon }}"></i>
+                    </a>
+                </td>
+                {% endfor %}
               </tr>
             {% endfor %}            
             </tbody>

@@ -19,6 +19,11 @@ class LoginView(FormView, SuccessMessageMixin):
     form_class = UserLoginForm
     success_url = reverse_lazy("tracker:home")
     success_message = "You are successfully logged in"
+    
+    def get_success_url(self) -> str:
+        if "next" in self.request.GET:
+            return self.request.GET["next"]
+        return super().get_success_url()
 
     def get_form_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_form_kwargs()

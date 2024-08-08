@@ -53,6 +53,15 @@ class BaseUpdateView(FormMixin, UpdateView):
     success_message = "%(model_name)s was updated successfully."
 
 
+class ListAction:
+    def __init__(self, label, icon, action, class_name=None,tooltip=None):
+        self.label = label
+        self.icon = icon
+        self.action = action
+        self.class_name = class_name
+        self.tooltip = tooltip
+
+
 class BaseListView(ListView):
     template_name = "list.html"
     model = None
@@ -65,6 +74,7 @@ class BaseListView(ListView):
     can_create = True
     can_edit = True
     can_delete = False
+    actions = []
 
     def get_title(self):
         if self.title:
@@ -132,6 +142,7 @@ class BaseListView(ListView):
             "boolean_fields",
             "list_display",
             "field_labels",
+            "actions",
         ]
         for prop in properties:
             if callable(getattr(self, f"get_{prop}", None)):

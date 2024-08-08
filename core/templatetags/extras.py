@@ -14,3 +14,8 @@ def get_property(data, key):
     if val is None:
         return "-"
     return val
+
+
+@register.filter(name="get_action_url")
+def get_action_url(obj, action):
+    return obj.get_action_url(action)

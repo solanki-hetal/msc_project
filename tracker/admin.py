@@ -21,3 +21,17 @@ class GitRepositoryAdmin(admin.ModelAdmin):
         "license",
     ]
     search_fields = ["name", "owner"]
+
+
+@admin.register(models.Author)
+class AuthorAdmin(admin.ModelAdmin):
+    list_display = ["username", "git_id", "avatar_url", "html_url"]
+    search_fields = ["username", "git_id"]
+    list_filter = ["username", "git_id"]
+
+
+@admin.register(models.Commit)
+class CommitAdmin(admin.ModelAdmin):
+    list_display = ["sha", "repository", "author", "committer", "commited_at"]
+    list_filter = ["repository", "author", "committer"]
+    search_fields = ["sha", "repository", "author", "committer"]
