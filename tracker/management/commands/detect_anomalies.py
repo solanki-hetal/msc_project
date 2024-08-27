@@ -1,8 +1,8 @@
-# detect_anomalies.py
 
 from datetime import timedelta
 
 from django.contrib.auth.models import User
+from django.core.mail import send_mail
 from django.core.management.base import BaseCommand
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
@@ -93,7 +93,7 @@ class Command(BaseCommand):
         return anomaly
 
     def create_notification(self, anomaly, message):
-        # Create a notification entry for each instructor (assuming you have an 'instructors' group or similar)
+        # Create a notification entry for each instructor
         instructors = User.objects.filter(
             groups__name="Instructors"
         )  # Replace 'Instructors' with the actual group name
@@ -101,6 +101,24 @@ class Command(BaseCommand):
             Notification.objects.create(
                 user=instructor, anomaly=anomaly, message=message
             )
+            self.send_email_notification(instructor, anomaly, message)
         self.stdout.write(
             self.style.SUCCESS(f"Notifications created for anomaly: {anomaly}")
+        )
+
+    def send_email_notification(self, instructor, anomaly, message):
+        # Send email notification
+        subject = f"Anomaly Detected: {anomaly.get_anomaly_type_display()}"
+        email_message = f"Dear {instructor.username},\n\n{message}\n\nBest regards,\nYour Monitoring System"
+        send_mail(
+            subject,
+            email_message,
+            "no-reply@example.com",  # Replace with your email settings
+            [instructor.email],
+            fail_silently=False,
+        )
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Email sent to {instructor.email} for anomaly: {anomaly}"
+            )
         )
