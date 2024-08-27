@@ -11,15 +11,15 @@ from django.contrib.auth import logout
 
 def logout_user(request):
     logout(request)
-    return redirect("tracker:home")
+    return redirect("tracker:dashboard")
 
 
 class LoginView(FormView, SuccessMessageMixin):
     template_name = "login.html"
     form_class = UserLoginForm
-    success_url = reverse_lazy("tracker:home")
+    success_url = reverse_lazy("tracker:dashboard")
     success_message = "You are successfully logged in"
-    
+
     def get_success_url(self) -> str:
         if "next" in self.request.GET:
             return self.request.GET["next"]
@@ -35,7 +35,9 @@ class RegisterView(FormView, SuccessMessageMixin):
     template_name = "register.html"
     form_class = UserCreationForm
     success_url = reverse_lazy("user:login")
-    success_message = "You are successfully registered. Check you email for verification."
+    success_message = (
+        "You are successfully registered. Check you email for verification."
+    )
 
     def get_form_kwargs(self) -> dict[str, Any]:
         kwargs = super().get_form_kwargs()

@@ -75,7 +75,7 @@ class BaseListView(ListView):
     can_edit = True
     can_delete = False
     actions = []
-    paginate_by = 10
+    paginate_by = 25
     per_page_options = [10, 25, 50, 100]
 
     def get_title(self):

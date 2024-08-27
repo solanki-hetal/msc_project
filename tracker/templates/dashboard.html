@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock head %}
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <!-- Total Repositories -->
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Total Repositories</h5>
+                    <p class="card-text display-4">{{ total_repositories }}</p>
+                </div>
+            </div>
+        </div>
+        <!-- Total Commits -->
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Total Commits</h5>
+                    <p class="card-text display-4">{{ total_commits }}</p>
+                </div>
+            </div>
+        </div>
+        <!-- Total Contributors -->
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Total Contributors</h5>
+                    <p class="card-text display-4">{{ total_contributors }}</p>
+                </div>
+            </div>
+        </div>
+        <!-- Top Language -->
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Top Language</h5>
+                    <p class="card-text display-4">{{ top_language.language }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Commits Table -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <h3>Recent Commits</h3>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Repository</th>
+                        <th>Author</th>
+                        <th>Commit Message</th>
+                        <th>Date</th>
+                        <th>Additions</th>
+                        <th>Deletions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for commit in recent_commits %}
+                        <tr>
+                            <td>{{ commit.repository.name }}</td>
+                            <td>{{ commit.author.username }}</td>
+                            <td>{{ commit.message|truncatewords:10 }}</td>
+                            <td>{{ commit.date }}</td>
+                            <td>{{ commit.additions }}</td>
+                            <td>{{ commit.deletions }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="row mt-4">
+        <!-- Active Repositories -->
+        <div class="col-md-6">
+            <h3>Active Repositories</h3>
+            <canvas id="activeRepositoriesChart"></canvas>
+        </div>
+
+        <!-- Commit Frequency -->
+        <div class="col-md-6">
+            <h3>Commit Frequency</h3>
+            <canvas id="commitFrequencyChart"></canvas>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+    <!-- Churn Rate -->
+
+        <div class="col-md-6">
+            <h3>Churn Rate</h3>
+            <canvas id="churnRateChart"></canvas>
+        </div>
+    <!-- Top Contributors -->
+
+        <div class="col-md-6">
+            <h3>Top Contributors</h3>
+            <canvas id="topContributorsChart"></canvas>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block core_footer %}
+<script>
+    // Data for Active Repositories Chart
+    var activeRepositoriesCtx = document.getElementById('activeRepositoriesChart').getContext('2d');
+    var activeRepositoriesChart = new Chart(activeRepositoriesCtx, {
+        type: 'bar',
+        data: {
+            labels: [{% for repo in active_repositories %}'{{ repo.repository__name }}',{% endfor %}],
+            datasets: [{
+                label: 'Commits in Last 30 Days',
+                data: [{% for repo in active_repositories %}{{ repo.commit_count }},{% endfor %}],
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Data for Commit Frequency Chart
+    var commitFrequencyCtx = document.getElementById('commitFrequencyChart').getContext('2d');
+    var commitFrequencyChart = new Chart(commitFrequencyCtx, {
+        type: 'line',
+        data: {
+            labels: [{% for freq in commit_frequency %}'{{ freq.date_day|date:"Y-m-d" }}',{% endfor %}],
+            datasets: [{
+                label: 'Commits per Day',
+                data: [{% for freq in commit_frequency %}{{ freq.commit_count }},{% endfor %}],
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    time: {
+                        unit: 'month'
+                    }
+                },
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Data for Churn Rate Chart
+    var churnRateCtx = document.getElementById('churnRateChart').getContext('2d');
+    var churnRateChart = new Chart(churnRateCtx, {
+        type: 'pie',
+        data: {
+            labels: ['Additions', 'Deletions'],
+            datasets: [{
+                label: 'Churn Rate',
+                data: [{{ churn_rate.total_additions }}, {{ churn_rate.total_deletions }}],
+                backgroundColor: ['rgba(255, 99, 132, 0.2)', 'rgba(255, 206, 86, 0.2)'],
+                borderColor: ['rgba(255, 99, 132, 1)', 'rgba(255, 206, 86, 1)'],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true
+        }
+    });
+
+    // Data for Top Contributors Chart
+    var topContributorsCtx = document.getElementById('topContributorsChart').getContext('2d');
+    var topContributorsChart = new Chart(topContributorsCtx, {
+        type: 'bar',
+        data: {
+            labels: [{% for contributor in top_contributors %}'{{ contributor.author__username }}',{% endfor %}],
+            datasets: [{
+                label: 'Commits by Contributor',
+                data: [{% for contributor in top_contributors %}{{ contributor.commit_count }},{% endfor %}],
+                backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                borderColor: 'rgba(153, 102, 255, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+</script>
+{% endblock core_footer %}

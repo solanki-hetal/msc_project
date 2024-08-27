@@ -4,7 +4,7 @@ from tracker import views
 app_name = "tracker"
 
 urlpatterns = [
-    path("", views.home, name="home"),
+    path("", views.DashboardView.as_view(), name="dashboard"),
     path("tokens/", views.TokenListView.as_view(), name="gittoken_list"),
     path("tokens/create/", views.TokenCreateView.as_view(), name="gittoken_create"),
     path("tokens/<int:pk>/edit/", views.TokenEditView.as_view(), name="gittoken_edit"),
@@ -23,5 +23,10 @@ urlpatterns = [
         "repository/<int:repository_id>/commits/<int:commit_id>/",
         views.CommitDetailView.as_view(),
         name="commit_detail",
+    ),
+    path(
+        "anomalies/",
+        view=views.AnomalyListView.as_view(),
+        name="anomaly_list",
     ),
 ]

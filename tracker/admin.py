@@ -35,3 +35,10 @@ class CommitAdmin(admin.ModelAdmin):
     list_display = ["sha", "repository", "author", "committer", "commited_at"]
     list_filter = ["repository", "author", "committer"]
     search_fields = ["sha", "repository", "author", "committer"]
+
+
+@admin.register(models.Anomaly)
+class AnomalyAdmin(admin.ModelAdmin):
+    list_display = ["repository", "author", "anomaly_type", "description"]
+    list_filter = ["anomaly_type"]
+    search_fields = ["repository", "author", "description"]

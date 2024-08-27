@@ -43,9 +43,10 @@ def navigation(request):
     active_url = request.resolver_match.url_name
 
     nav = [
-        Navigation("bi-house-fill", "Dashboard", "tracker:home", active_url),
+        Navigation("bi-house-fill", "Dashboard", "tracker:dashboard", active_url),
         Navigation("bi-shield-lock", "Access Tokens", "tracker:gittoken_list", active_url),
         Navigation("bi-journal", "Repositories", "tracker:repository_list", active_url),
+        Navigation("bi-journal", "Anomalies", "tracker:anomaly_list", active_url),
         Navigation("bi-door-closed", "Sign out", "user:logout", active_url),
     ]
     return {"navigation": nav, "active_url": active_url}

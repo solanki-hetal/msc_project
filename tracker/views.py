@@ -1,23 +1,97 @@
+from datetime import timedelta
 from typing import Any
 
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Avg, Count, F, Func, Max, Min, Sum
+from django.db.models import Avg, Count, F, Max, Min, Sum
+from django.db.models.functions import ExtractHour, TruncDay
 from django.db.models.query import QuerySet
-from django.shortcuts import render
-from django.utils.timezone import now, timedelta
-from django.views.generic import DetailView
-from django.db.models.functions import ExtractHour
+from django.utils import timezone
+from django.utils.timezone import timedelta
+from django.views.generic import DetailView, TemplateView
 
 from core.views import BaseCreateView, BaseListView, BaseUpdateView, ListAction
 from tracker import forms, models
 
-from .models import Commit, Repository
+from .models import Author, Commit, Repository
 
 
-@login_required
-def home(request):
-    return render(request, "home.html")
+class DashboardView(TemplateView):
+    template_name = "dashboard.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Total Repositories
+        context["total_repositories"] = Repository.objects.count()
+
+        # Total Commits
+        context["total_commits"] = Commit.objects.count()
+
+        # Total Contributors
+        context["total_contributors"] = (
+            Author.objects.filter(commit__isnull=False).distinct().count()
+        )
+
+        # Top Language
+        context["top_language"] = (
+            Repository.objects.values("language")
+            .annotate(language_count=Count("language"))
+            .order_by("-language_count")
+            .first()
+        )
+
+        # Recent Commits
+        context["recent_commits"] = Commit.objects.select_related("author").order_by(
+            "-date"
+        )[:10]
+
+        # Active Repositories
+        last_30_days = timezone.now() - timedelta(days=30)
+        context["active_repositories"] = (
+            Commit.objects.filter(date__gte=last_30_days)
+            .values("repository__name")
+            .annotate(commit_count=Count("id"))
+            .order_by("-commit_count")[:5]
+        )
+
+        # Commit Frequency
+        context["commit_frequency"] = (
+            Commit.objects.filter(date__gte=last_30_days)
+            .annotate(date_day=TruncDay("date"))
+            .values("date_day")
+            .annotate(commit_count=Count("id"))
+            .order_by("date_day")
+        )
+
+        # Churn Rate
+        churn_rate = Commit.objects.filter(date__gte=last_30_days).aggregate(
+            total_additions=Sum("additions"), total_deletions=Sum("deletions")
+        )
+        context["churn_rate"] = {
+            "total_additions": churn_rate["total_additions"],
+            "total_deletions": churn_rate["total_deletions"],
+        }
+
+        # Top Contributors
+        context["top_contributors"] = (
+            Commit.objects.filter(date__gte=last_30_days)
+            .values("author__username")
+            .annotate(commit_count=Count("id"))
+            .order_by("-commit_count")[:5]
+        )
+
+        # Repository Comparison
+        context["repository_comparison"] = (
+            Repository.objects.annotate(
+                total_commits=Count("commit"),
+                total_contributors=Count("commit__author", distinct=True),
+                churn_rate=Sum("commit__additions") + Sum("commit__deletions"),
+            )
+            .values("name", "total_commits", "total_contributors", "churn_rate")
+            .order_by("-total_commits")
+        )
+
+        return context
 
 
 class TokenCreateView(LoginRequiredMixin, BaseCreateView):
@@ -153,3 +227,24 @@ class CommitDetailView(LoginRequiredMixin, BaseListView):
 
     def get_queryset(self) -> QuerySet[Any]:
         return super().get_queryset().filter(commit_id=self.kwargs["commit_id"])
+
+
+class AnomalyListView(LoginRequiredMixin, BaseListView):
+    model = models.Anomaly
+    list_display = ["repository", "author", "anomaly_type", "description"]
+    can_create = False
+    can_edit = False
+    can_delete = False
+
+
+class NotificationListView(LoginRequiredMixin, BaseListView):
+    model = models.Notification
+    list_display = [
+        "anomaly",
+    ]
+    can_create = False
+    can_edit = False
+    can_delete = False
+
+    # def get_queryset(self):
+    #     return self.model.objects.filter(instructor=self.request.user)
