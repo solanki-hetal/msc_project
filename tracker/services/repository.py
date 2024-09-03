@@ -129,7 +129,6 @@ class RepositorySyncService:
                 _commits.append(commit)
             return _commits
         except Exception as e:
-            json.dump(_commit.raw_data, open("error.json", "w"), indent=2)
             raise CommandError(
                 f"Failed to fetch commits for repository {self.repo_obj.name}: {e}"
             )

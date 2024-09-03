@@ -5,13 +5,16 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Avg, Count, F, Max, Min, Sum
 from django.db.models.functions import ExtractHour, TruncDay
 from django.db.models.query import QuerySet
-from django.http import request
+from django.http import HttpRequest, HttpResponse, QueryDict, request
 from django.utils import timezone
 from django.utils.timezone import timedelta
+from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import DetailView, TemplateView
+from github import Github
 
 from core.views import BaseCreateView, BaseListView, BaseUpdateView, ListAction
 from tracker import forms, models
+from tracker.services.repository import RepositorySyncService
 
 from .models import Author, Commit, Repository
 
@@ -251,5 +254,24 @@ class NotificationListView(LoginRequiredMixin, BaseListView):
     #     return self.model.objects.filter(instructor=self.request.user)
 
 
-def webhook_listener_view(request):
-    pass
+@csrf_exempt
+def webhook_listener_view(request: HttpRequest):
+    event = request.headers.get("X-GitHub-Event", "")
+    hook_id = int(request.headers.get("X-GitHub-Hook-ID", ""))
+    if not event:
+        raise Exception("Event not found")
+    if not hook_id:
+        raise Exception("Hook ID not found")
+    repository = Repository.objects.filter(webhook_id=hook_id).first()
+    if not repository:
+        raise Exception("Repository not found")
+    token = repository.token
+    client = Github(token.token)
+    git_repository = client.get_repo(repository.full_name)
+    data = QueryDict(request.body)
+    current_branch = data.get("ref").split("/")[2]
+    if repository.default_branch != current_branch:
+        raise Exception("Tracking branch does not match")
+    sync_service = RepositorySyncService(repository=git_repository, repo_obj=repository)
+    sync_service.fetch_commits()
+    return HttpResponse("OK")
