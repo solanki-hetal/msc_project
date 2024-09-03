@@ -5,6 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Avg, Count, F, Max, Min, Sum
 from django.db.models.functions import ExtractHour, TruncDay
 from django.db.models.query import QuerySet
+from django.http import request
 from django.utils import timezone
 from django.utils.timezone import timedelta
 from django.views.generic import DetailView, TemplateView
@@ -248,3 +249,7 @@ class NotificationListView(LoginRequiredMixin, BaseListView):
 
     # def get_queryset(self):
     #     return self.model.objects.filter(instructor=self.request.user)
+
+
+def webhook_listener_view(request):
+    pass

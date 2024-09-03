@@ -45,6 +45,7 @@ class RepositoryAction(Enum):
 
 
 class Repository(models.Model):
+    token = models.ForeignKey(GitToken, on_delete=models.CASCADE)
     git_id = models.BigIntegerField(unique=True)
     name = models.CharField(max_length=255)
     full_name = models.TextField()
@@ -61,6 +62,7 @@ class Repository(models.Model):
     source = models.ForeignKey(
         "self", on_delete=models.PROTECT, related_name="+", null=True, blank=True
     )
+    webhook_id = models.BigIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(null=True, blank=True)
     pushed_at = models.DateTimeField(null=True, blank=True)
@@ -88,6 +90,7 @@ class Repository(models.Model):
     class Meta:
         verbose_name_plural = "Repositories"
         permissions = [("can_view_all_repositories", "Can view all repositories")]
+        unique_together = (("token", "git_id", "token"),)
 
 
 class CommitAction(Enum):
@@ -151,29 +154,33 @@ class CommitAnalysis(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
-
 class Anomaly(models.Model):
     ANOMALY_TYPES = (
-        ('infrequent_commits', 'Infrequent Commits'),
-        ('mass_commits', 'Mass Commits at Odd Times'),
-        ('plagiarism', 'Potential Plagiarism'),
+        ("infrequent_commits", "Infrequent Commits"),
+        ("mass_commits", "Mass Commits at Odd Times"),
+        ("plagiarism", "Potential Plagiarism"),
     )
 
-    repository = models.ForeignKey('Repository', on_delete=models.CASCADE)
-    author = models.ForeignKey('Author', on_delete=models.CASCADE, null=True, blank=True)
+    repository = models.ForeignKey("Repository", on_delete=models.CASCADE)
+    author = models.ForeignKey(
+        "Author", on_delete=models.CASCADE, null=True, blank=True
+    )
     anomaly_type = models.CharField(max_length=50, choices=ANOMALY_TYPES)
     detected_at = models.DateTimeField(auto_now_add=True)
     description = models.TextField()
 
-    
     def __str__(self) -> str:
-        return '{} - {}'.format(self.get_anomaly_type_display(), self.description)
+        return "{} - {}".format(self.get_anomaly_type_display(), self.description)
+
+    class Meta:
+        verbose_name_plural = "Anomalies"
+
 
 class Notification(models.Model):
     instructor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    anomaly = models.ForeignKey('Anomaly', on_delete=models.CASCADE)
+    anomaly = models.ForeignKey("Anomaly", on_delete=models.CASCADE)
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     def __str__(self):
         return f"Notification for {self.user.username} - {self.anomaly}"

@@ -1,4 +1,5 @@
 from django.urls import path
+
 from tracker import views
 
 app_name = "tracker"
@@ -28,5 +29,10 @@ urlpatterns = [
         "anomalies/",
         view=views.AnomalyListView.as_view(),
         name="anomaly_list",
+    ),
+    path(
+        "webhook/",
+        view=views.webhook_listener_view,
+        name="webhook_listener",
     ),
 ]

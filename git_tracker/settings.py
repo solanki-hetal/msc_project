@@ -157,3 +157,7 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = "your-email@example.com"  # Replace with your email address
 EMAIL_HOST_PASSWORD = "your-email-password"  # Replace with your email password
 DEFAULT_FROM_EMAIL = "no-reply@example.com"  # Replace with your default from email
+
+
+# Webhook config
+WEBHOOK_URL = "https://localhost:8000/tracker/webhook/"

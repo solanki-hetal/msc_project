@@ -1,10 +1,13 @@
 import json
 import os
-from django.core.management.base import BaseCommand, CommandError
-from tracker import models
-from github import Github, GithubException
 
+from django.conf import settings
+from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
+from github import Github, GithubException, Hook
+
+from tracker import models
+from tracker.services.repository import RepositorySyncService
 
 
 class Command(BaseCommand):
@@ -37,24 +40,25 @@ class Command(BaseCommand):
             owner = owners[author.id]
         return owner
 
-    def insert_or_update_repository(self, repo, owners={}):
+    def insert_or_update_repository(self, token: models.GitToken, repo, owners={}):
         """
         Insert or update a repository in the database.
         """
         owner = self.insert_or_update_author(repo.owner, owners)
         source, _ = (
-            self.insert_or_update_repository(repo.source, owners)
+            self.insert_or_update_repository(token, repo.source, owners)
             if repo.source
             else (None, None)
         )
         parent, _ = (
-            self.insert_or_update_repository(repo.parent, owners)
+            self.insert_or_update_repository(token, repo.parent, owners)
             if repo.parent
             else (None, None)
         )
-        return models.Repository.objects.update_or_create(
+        obj, created = models.Repository.objects.update_or_create(
             git_id=repo.id,
             owner=owner,
+            token=token,
             defaults={
                 "name": repo.name,
                 "full_name": repo.full_name,
@@ -72,88 +76,58 @@ class Command(BaseCommand):
                 "last_synced_at": timezone.now(),
             },
         )
+        if created:
+            EVENTS = ["push"]
+            # config = {"url": settings.WEBHOOK_URL, "content_type": "json"}
+            config = {"url": 'https://webhook.site/97c88c05-1be5-401c-b7e7-b73af37641a5', "content_type": "json"}
+            try:              
+              hook: Hook = repo.create_hook(
+                  "project_tracker_webhook",
+                  config,
+                  EVENTS,
+                  active=True,
+              )
+              obj.webhook_id = hook.id
+              obj.save()
+            except Exception as e:
+              self.stderr.write(f"Failed to create webhook for repo {obj.name}: {e}")
+              
+        return obj, created
 
-    def fetch_repositories(self, git_user, user):
+    def fetch_repositories(
+        self,
+        token: models.GitToken,
+        git_user
+    ):
         """
         Fetch and print repositories for the authenticated user.
         """
-        try:
-            _repos = git_user.get_repos()
-            owners = {}
-            repositories = []
-            for repo in _repos:
-                self.stdout.write(f"Syncing - {repo.name}", self.style.WARNING)
-                repository, _ = self.insert_or_update_repository(repo, owners)
-                repositories.append(repository)
-                commits = self.fetch_commits(repo, repository, owners)
-                self.stdout.write(
-                    f"Synced commits - {len(commits)}", self.style.SUCCESS
-                )
-                self.stdout.write(f"Synced - {repo.name}", self.style.SUCCESS)
-                self.stdout.write("-------------------------------------------------")
-            user.repositories.set(repositories)
-            return repositories
-        except GithubException as e:
-            self.stderr.write(f"Failed to fetch repositories: {e}")
-            return []
-
-    def fetch_commits(self, repository, repo_obj, owners={}):
-        """
-        Fetch and print commits for a given repository.
-        """
-        try:
-            git_commits = repository.get_commits()
-            _commits = []
-            for _commit in git_commits:
-                author = (
-                    self.insert_or_update_author(_commit.author, owners)
-                    if _commit.author
-                    else None
-                )
-                committer = (
-                    self.insert_or_update_author(_commit.committer, owners)
-                    if _commit.committer
-                    else None
-                )
-                commit, _ = models.Commit.objects.update_or_create(
-                    repository=repo_obj,
-                    sha=_commit.sha,
-                    defaults={
-                        "message": _commit.commit.message,
-                        "date": _commit.commit.author.date,
-                        "commited_at": _commit.commit.committer.date,
-                        "author": author,
-                        "committer": committer,
-                        "url": _commit.html_url,
-                        "additions": _commit.stats.additions,
-                        "deletions": _commit.stats.deletions,
-                        "total": _commit.stats.total,
-                    },
-                )
-                for file in _commit.files:
-                    models.CommitFile.objects.update_or_create(
-                        commit=commit,
-                        filename=file.filename,
-                        defaults={
-                            "status": file.status,
-                            "additions": file.additions,
-                            "deletions": file.deletions,
-                            "changes": file.changes,
-                            "patch": file.patch,
-                        },
-                    )
-                _commits.append(commit)
-            return _commits
-        except Exception as e:
-            json.dump(_commit.raw_data, open("error.json", "w"), indent=2)
-            raise CommandError(
-                f"Failed to fetch commits for repository {repository.name}: {e}"
+        # try:
+        _repos = git_user.get_repos()
+        owners = {}
+        repositories = []
+        for repo in _repos:
+            self.stdout.write(f"Syncing - {repo.name}", self.style.WARNING)
+            repository, _ = self.insert_or_update_repository(token, repo, owners)
+            repositories.append(repository)
+            sync_service = RepositorySyncService(repository=repo,repo_obj=repository)
+            commits = sync_service.fetch_commits(owners=owners)
+            self.stdout.write(
+                f"Synced commits - {len(commits)}", self.style.SUCCESS
             )
+            self.stdout.write(f"Synced - {repo.name}", self.style.SUCCESS)
+            self.stdout.write("-------------------------------------------------")
+        token.user.repositories.set(repositories)
+        return repositories
+        # except GithubException as e:
+        #     self.stderr.write(f"Failed to fetch repositories: {e}")
+        #     return []
 
+  
     def handle(self, *args, **options):
         tokens = models.GitToken.objects.filter(is_active=True)
         for token in tokens:
             github_client = Github(token.token)
             git_user = self.fetch_user_details(github_client)
             if git_user:
-                self.fetch_repositories(git_user, token.user)
+                self.fetch_repositories(token, git_user)
