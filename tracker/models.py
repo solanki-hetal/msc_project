@@ -22,11 +22,17 @@ class GitToken(models.Model):
     def get_absolute_url(self):
         return reverse("tracker:gittoken_edit", kwargs={"pk": self.pk})
 
+    def get_delete_url(self):
+        return reverse("tracker:gittoken_delete", kwargs={"pk": self.pk})
+
     def __str__(self) -> str:
         return self.label
 
     class Meta:
-        permissions = [("can_view_all_git_tokens", "Can view all git tokens")]
+        permissions = [
+            ("can_view_all_git_tokens", "Can view all git tokens"),
+            ("can_delete_all_git_tokens", "Can delete all git tokens"),
+        ]
 
 
 class Author(models.Model):
@@ -83,7 +89,12 @@ class Repository(models.Model):
     class Meta:
         verbose_name_plural = "Repositories"
         permissions = [("can_view_all_repositories", "Can view all repositories")]
-        unique_together = (("git_id", "owner",),)
+        unique_together = (
+            (
+                "git_id",
+                "owner",
+            ),
+        )
 
 
 class CommitAction(Enum):

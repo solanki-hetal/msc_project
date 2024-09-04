@@ -9,6 +9,7 @@ urlpatterns = [
     path("tokens/", views.TokenListView.as_view(), name="gittoken_list"),
     path("tokens/create/", views.TokenCreateView.as_view(), name="gittoken_create"),
     path("tokens/<int:pk>/edit/", views.TokenEditView.as_view(), name="gittoken_edit"),
+    path("tokens/<int:pk>/delete/", views.delete_token, name="gittoken_delete"),
     path("repository/", views.RepositoryListView.as_view(), name="repository_list"),
     path(
         "repository/<int:pk>/analysis/",

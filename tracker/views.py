@@ -1,12 +1,15 @@
-from datetime import timedelta
 import json
+from datetime import timedelta
 from typing import Any
 
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Avg, Count, F, Max, Min, Sum
 from django.db.models.functions import ExtractHour, TruncDay
 from django.db.models.query import QuerySet
 from django.http import HttpRequest, HttpResponse, QueryDict, request
+from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.utils.timezone import timedelta
@@ -123,11 +126,23 @@ class TokenListView(LoginRequiredMixin, BaseListView):
     model = models.GitToken
     create_button_label = "Create Token"
     list_display = ["label", "service", "is_active"]
+    can_delete = True
 
     def get_queryset(self):
         if self.request.user.has_perm("can_view_all_git_tokens"):
             return self.model.objects.all()
         return self.model.objects.filter(user=self.request.user)
+
+
+@login_required
+def delete_token(request: HttpRequest, pk: int):
+    token = models.GitToken.objects.get(pk=pk)
+    if request.user == token.user or request.user.has_perm('can_delete_all_git_tokens'):
+        messages.success(request, f"Token {token.label} deleted successfully.")
+        token.delete()
+    else:
+        messages.error(request, "You do not have permission to delete this token")
+    return redirect("tracker:gittoken_list")
 
 
 class RepositoryListView(LoginRequiredMixin, BaseListView):
