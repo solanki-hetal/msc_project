@@ -13,7 +13,7 @@ class GitTokenAdmin(admin.ModelAdmin):
 
 @admin.register(models.Repository)
 class GitRepositoryAdmin(admin.ModelAdmin):
-    list_display = ["name", "owner", "parent", "source","webhook_id", "created_at"]
+    list_display = ["name", "owner","webhook_id", "created_at"]
     list_filter = [
         "owner",
         "private",

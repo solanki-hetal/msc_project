@@ -45,16 +45,6 @@ class Command(BaseCommand):
         Insert or update a repository in the database.
         """
         owner = self.insert_or_update_author(repo.owner, owners)
-        source, _ = (
-            self.insert_or_update_repository(token, repo.source, owners)
-            if repo.source
-            else (None, None)
-        )
-        parent, _ = (
-            self.insert_or_update_repository(token, repo.parent, owners)
-            if repo.parent
-            else (None, None)
-        )
         obj, created = models.Repository.objects.update_or_create(
             git_id=repo.id,
             owner=owner,
@@ -67,8 +57,6 @@ class Command(BaseCommand):
                 "language": repo.language,
                 "license": repo.license,
                 "default_branch": repo.default_branch,
-                "source": source,
-                "parent": parent,
                 "created_at": repo.created_at,
                 "updated_at": repo.updated_at,
                 "pushed_at": repo.pushed_at,

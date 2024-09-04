@@ -55,12 +55,6 @@ class Repository(models.Model):
     language = models.CharField(max_length=255, null=True, blank=True)
     license = models.CharField(max_length=255, null=True, blank=True)
     default_branch = models.CharField(max_length=255)
-    parent = models.ForeignKey(
-        "self", on_delete=models.PROTECT, related_name="children", null=True, blank=True
-    )
-    source = models.ForeignKey(
-        "self", on_delete=models.PROTECT, related_name="+", null=True, blank=True
-    )
     webhook_id = models.BigIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(null=True, blank=True)
