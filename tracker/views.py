@@ -1,4 +1,5 @@
 from datetime import timedelta
+import json
 from typing import Any
 
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -285,7 +286,7 @@ def webhook_listener_view(request: HttpRequest):
         raise Exception("No active token found")
     client = Github(token.token)
     git_repository = client.get_repo(repository.full_name)
-    data = QueryDict(request.body)
+    data = json.loads(request.body.decode("utf-8"))
     current_branch = data.get("ref").split("/")[2]
     if repository.default_branch != current_branch:
         raise Exception("Tracking branch does not match")
