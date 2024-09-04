@@ -6,6 +6,7 @@ from django.db.models import Avg, Count, F, Max, Min, Sum
 from django.db.models.functions import ExtractHour, TruncDay
 from django.db.models.query import QuerySet
 from django.http import HttpRequest, HttpResponse, QueryDict, request
+from django.urls import reverse_lazy
 from django.utils import timezone
 from django.utils.timezone import timedelta
 from django.views.decorators.csrf import csrf_exempt
@@ -101,6 +102,7 @@ class DashboardView(TemplateView):
 class TokenCreateView(LoginRequiredMixin, BaseCreateView):
     form_class = forms.TokenForm
     model = models.GitToken
+    success_url = reverse_lazy("tracker:gittoken_list")
 
     def form_valid(self, form):
         form.instance.user = self.request.user
@@ -110,6 +112,7 @@ class TokenCreateView(LoginRequiredMixin, BaseCreateView):
 class TokenEditView(LoginRequiredMixin, BaseUpdateView):
     form_class = forms.TokenForm
     model = models.GitToken
+    success_url = reverse_lazy("tracker:gittoken_list")
 
     def get_queryset(self):
         return self.model.objects.filter(user=self.request.user)
@@ -169,14 +172,21 @@ class RepositoryStatsView(DetailView):
         )
         context["commit_frequency"] = commit_frequency
 
+        context["commit_count"] = Commit.objects.filter(repository=repository).count()
+
+        # context["contributors_count"] = Author.objects.filter(
+        #     commit__repository=repository
+        # ).distinct().count()
+
         # Top Contributors
         top_contributors = (
             Commit.objects.filter(repository=repository, author__isnull=False)
             .values("author__username")
             .annotate(commit_count=Count("id"))
-            .order_by("-commit_count")[:10]
+            .order_by("-commit_count")
         )
         context["top_contributors"] = top_contributors
+        context["contributors_count"] = len(top_contributors)
 
         # Commit Size Distribution
         size_distribution = Commit.objects.filter(repository=repository).aggregate(
@@ -188,7 +198,9 @@ class RepositoryStatsView(DetailView):
             additions=Sum("additions"), deletions=Sum("deletions")
         )
 
-        churn_rate = churn_data["additions"] + churn_data["deletions"]
+        churn_rate = (churn_data.get("additions") or 0) + (
+            churn_data.get("deletions") or 0
+        )
         context["churn_rate"] = churn_rate
 
         # Commit Time Distribution
@@ -265,7 +277,12 @@ def webhook_listener_view(request: HttpRequest):
     repository = Repository.objects.filter(webhook_id=hook_id).first()
     if not repository:
         raise Exception("Repository not found")
-    token = repository.token
+    repository: Repository
+    token = models.GitToken.objects.filter(
+        user__in=repository.users.all(), is_active=True
+    ).first()
+    if not token:
+        raise Exception("No active token found")
     client = Github(token.token)
     git_repository = client.get_repo(repository.full_name)
     data = QueryDict(request.body)

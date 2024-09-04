@@ -176,8 +176,22 @@ class BaseListView(ListView):
         paginator = context["paginator"]
         total_pages = paginator.num_pages
         current_page = int(self.request.GET.get("page", 1))
-        print(current_page, total_pages)
         if current_page > total_pages:
             # Redirect to the last page if the current page exceeds the total number of pages
             context["page_obj"] = paginator.page(total_pages)
+        page_obj = context["page_obj"]
+        page_range = []
+        start = max(1, current_page - 1)
+        end = min(total_pages, current_page + 1)
+        if start > 1:
+            page_range.append(1)
+            if start > 2:
+                page_range.append("...")
+        for i in range(start, end + 1):
+            page_range.append(i)
+        if end < total_pages:
+            if end < total_pages - 1:
+                page_range.append("...")
+            page_range.append(total_pages)
+        context["page_range"] = page_range
         return context

@@ -45,7 +45,6 @@ class RepositoryAction(Enum):
 
 
 class Repository(models.Model):
-    token = models.ForeignKey(GitToken, on_delete=models.CASCADE)
     git_id = models.BigIntegerField(unique=True)
     name = models.CharField(max_length=255)
     full_name = models.TextField()
@@ -90,7 +89,7 @@ class Repository(models.Model):
     class Meta:
         verbose_name_plural = "Repositories"
         permissions = [("can_view_all_repositories", "Can view all repositories")]
-        unique_together = (("token", "git_id", "token"),)
+        unique_together = (("git_id", "owner",),)
 
 
 class CommitAction(Enum):

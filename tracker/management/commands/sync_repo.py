@@ -58,7 +58,6 @@ class Command(BaseCommand):
         obj, created = models.Repository.objects.update_or_create(
             git_id=repo.id,
             owner=owner,
-            token=token,
             defaults={
                 "name": repo.name,
                 "full_name": repo.full_name,
