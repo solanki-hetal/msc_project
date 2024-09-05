@@ -87,12 +87,8 @@ WSGI_APPLICATION = "git_tracker.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.mysql",
-        "OPTIONS": {
-            "database": "git_tracker",
-            "user": "root",
-            "password": "",
-        },
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
 
