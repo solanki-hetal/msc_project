@@ -1,113 +1,125 @@
-{% extends 'base.html' %}
-{% block head %}
+{% extends 'base.html' %} {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-{% endblock head %}
-{% block content %}
+{% endblock head %} {% block content %}
 <div class="container my-5">
-    <div class="row">
-        <!-- Total Repositories -->
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h5 class="card-title">Total Repositories</h5>
-                    <p class="card-text display-4">{{ total_repositories }}</p>
-                </div>
-            </div>
+  <form method="GET" action="{% url 'tracker:dashboard' %}">
+    <div class="input-group mb-3">
+      <input
+        type="text"
+        name="author"
+        class="form-control"
+        placeholder="Search by author"
+        aria-label="Search by author"
+        value="{{ request.GET.author }}"
+      />
+      <div class="input-group-append">
+        <button class="btn btn-outline-primary" type="submit">Search</button>
+      </div>
+    </div>
+  </form>
+  <div class="row mt-4">
+    <!-- Total Repositories -->
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h5 class="card-title">Total Repositories</h5>
+          <p class="card-text display-4">{{ total_repositories }}</p>
         </div>
-        <!-- Total Commits -->
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h5 class="card-title">Total Commits</h5>
-                    <p class="card-text display-4">{{ total_commits }}</p>
-                </div>
-            </div>
+      </div>
+    </div>
+    <!-- Total Commits -->
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h5 class="card-title">Total Commits</h5>
+          <p class="card-text display-4">{{ total_commits }}</p>
         </div>
-        <!-- Total Contributors -->
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h5 class="card-title">Total Contributors</h5>
-                    <p class="card-text display-4">{{ total_contributors }}</p>
-                </div>
-            </div>
+      </div>
+    </div>
+    <!-- Average Commits per Repository -->
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h5 class="card-title">Avg. Commits per Repository</h5>
+          <p class="card-text display-4">
+            {{ average_commits_per_repo|floatformat:2 }}
+          </p>
         </div>
-        <!-- Top Language -->
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h5 class="card-title">Top Language</h5>
-                    <p class="card-text display-4">{{ top_language.language }}</p>
-                </div>
-            </div>
-        </div>
+      </div>
     </div>
 
-    <!-- Recent Commits Table -->
-    <div class="row mt-4">
-        <div class="col-md-12">
-            <h3>Recent Commits</h3>
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Repository</th>
-                        <th>Author</th>
-                        <th>Commit Message</th>
-                        <th>Date</th>
-                        <th>Additions</th>
-                        <th>Deletions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for commit in recent_commits %}
-                        <tr>
-                            <td>{{ commit.repository.name }}</td>
-                            <td>{{ commit.author.username }}</td>
-                            <td>{{ commit.message|truncatewords:10 }}</td>
-                            <td>{{ commit.date }}</td>
-                            <td>{{ commit.additions }}</td>
-                            <td>{{ commit.deletions }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <!-- Top Language -->
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h5 class="card-title">Top Language</h5>
+          <p class="card-text display-4">{{ top_language.language }}</p>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Commits Table -->
+  <div class="row mt-4">
+    <div class="col-md-12">
+      <h3>Recent Commits</h3>
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>Repository</th>
+            <th>Author</th>
+            <th>Commit Message</th>
+            <th>Date</th>
+            <th>Additions</th>
+            <th>Deletions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for commit in recent_commits %}
+          <tr>
+            <td>{{ commit.repository.name }}</td>
+            <td>{{ commit.author.username }}</td>
+            <td>{{ commit.message|truncatewords:10 }}</td>
+            <td>{{ commit.date }}</td>
+            <td>{{ commit.additions }}</td>
+            <td>{{ commit.deletions }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Charts Section -->
+  <div class="row mt-4">
+    <!-- Active Repositories -->
+    <div class="col-md-6">
+      <h3>Active Repositories</h3>
+      <canvas id="activeRepositoriesChart"></canvas>
     </div>
 
-    <!-- Charts Section -->
-    <div class="row mt-4">
-        <!-- Active Repositories -->
-        <div class="col-md-6">
-            <h3>Active Repositories</h3>
-            <canvas id="activeRepositoriesChart"></canvas>
-        </div>
-
-        <!-- Commit Frequency -->
-        <div class="col-md-6">
-            <h3>Commit Frequency</h3>
-            <canvas id="commitFrequencyChart"></canvas>
-        </div>
+    <!-- Commit Frequency -->
+    <div class="col-md-6">
+      <h3>Commit Frequency</h3>
+      <canvas id="commitFrequencyChart"></canvas>
     </div>
+  </div>
 
-    <div class="row mt-4">
+  <div class="row mt-4">
     <!-- Churn Rate -->
 
-        <div class="col-md-6">
-            <h3>Churn Rate</h3>
-            <canvas id="churnRateChart"></canvas>
-        </div>
-    <!-- Top Contributors -->
-
-        <div class="col-md-6">
-            <h3>Top Contributors</h3>
-            <canvas id="topContributorsChart"></canvas>
-        </div>
+    <div class="col-md-6">
+      <h3>Churn Rate</h3>
+      <canvas id="churnRateChart"></canvas>
     </div>
-
+    <!-- Commits by Language -->
+    <div class="col-md-6">
+      <h3>Commits by Language</h3>
+      <canvas id="commitsByLanguageChart"></canvas>
+    </div>
+  </div>
 </div>
-{% endblock %}
-
-{% block core_footer %}
+{% endblock %} {% block core_footer %}
 <script>
     // Data for Active Repositories Chart
     var activeRepositoriesCtx = document.getElementById('activeRepositoriesChart').getContext('2d');
@@ -124,6 +136,12 @@
             }]
         },
         options: {
+            tooltips: {
+                enabled: true,
+            },
+            animation: {
+                duration: 2000, // Animation duration
+            },
             responsive: true,
             scales: {
                 y: {
@@ -149,6 +167,12 @@
         },
         options: {
             responsive: true,
+            tooltips: {
+                enabled: true,
+            },
+            animation: {
+                duration: 2000, // Animation duration
+            },
             scales: {
                 x: {
                     time: {
@@ -177,32 +201,53 @@
             }]
         },
         options: {
+            tooltips: {
+                enabled: true,
+            },
+            animation: {
+                duration: 2000, // Animation duration
+            },
             responsive: true
         }
     });
 
-    // Data for Top Contributors Chart
-    var topContributorsCtx = document.getElementById('topContributorsChart').getContext('2d');
-    var topContributorsChart = new Chart(topContributorsCtx, {
-        type: 'bar',
-        data: {
-            labels: [{% for contributor in top_contributors %}'{{ contributor.author__username }}',{% endfor %}],
-            datasets: [{
-                label: 'Commits by Contributor',
-                data: [{% for contributor in top_contributors %}{{ contributor.commit_count }},{% endfor %}],
-                backgroundColor: 'rgba(153, 102, 255, 0.2)',
-                borderColor: 'rgba(153, 102, 255, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
-        }
-    });
+  // Data for Commits by Language Chart
+  var commitsByLanguageCtx = document.getElementById('commitsByLanguageChart').getContext('2d');
+  var commitsByLanguageChart = new Chart(commitsByLanguageCtx, {
+      type: 'pie',
+      data: {
+          labels: [{% for lang in commits_by_language %}'{{ lang.language }}',{% endfor %}],
+          datasets: [{
+              label: 'Commits by Language',
+              data: [{% for lang in commits_by_language %}{{ lang.commit_count }},{% endfor %}],
+              backgroundColor: [
+                  'rgba(255, 99, 132, 0.2)',
+                  'rgba(54, 162, 235, 0.2)',
+                  'rgba(255, 206, 86, 0.2)',
+                  'rgba(75, 192, 192, 0.2)',
+                  'rgba(153, 102, 255, 0.2)',
+                  'rgba(255, 159, 64, 0.2)'
+              ],
+              borderColor: [
+                  'rgba(255, 99, 132, 1)',
+                  'rgba(54, 162, 235, 1)',
+                  'rgba(255, 206, 86, 1)',
+                  'rgba(75, 192, 192, 1)',
+                  'rgba(153, 102, 255, 1)',
+                  'rgba(255, 159, 64, 1)'
+              ],
+              borderWidth: 1
+          }]
+      },
+      options: {
+          tooltips: {
+              enabled: true,
+          },
+          animation: {
+              duration: 2000, // Animation duration
+          },
+          responsive: true
+      }
+  });
 </script>
 {% endblock core_footer %}

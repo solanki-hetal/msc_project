@@ -139,7 +139,10 @@ class BaseListView(ListView):
         return _boolean_fields
 
     def get_paginate_by(self, queryset) -> int | None:
-        return self.request.GET.get("per_page", self.paginate_by)
+        per_page = self.request.GET.get("per_page")
+        if not per_page:
+            return self.paginate_by
+        return int(per_page)
 
     def to_query_string(self, **kwargs):
         query_string = self.request.GET.copy()
@@ -178,7 +181,6 @@ class BaseListView(ListView):
 
     def get_searchable_query(self):
         search = self.request.GET.get("search")
-        print(type(self.searchable_fields))
         if not self.searchable_fields or not search:
             return Q()
         if isinstance(self.searchable_fields, str):
@@ -220,7 +222,7 @@ class BaseListView(ListView):
                 context[prop] = getattr(self, f"get_{prop}")()
             else:
                 context[prop] = getattr(self, prop)
-        paginator = context["paginator"]
+        paginator = self.get_paginator(self.object_list, self.get_paginate_by(self.object_list))
         total_pages = paginator.num_pages
         current_page = self.request.GET.get("page", 1)
         if not current_page:
@@ -229,7 +231,6 @@ class BaseListView(ListView):
         if current_page > total_pages:
             # Redirect to the last page if the current page exceeds the total number of pages
             context["page_obj"] = paginator.page(total_pages)
-        page_obj = context["page_obj"]
         page_range = []
         start = max(1, current_page - 1)
         end = min(total_pages, current_page + 1)

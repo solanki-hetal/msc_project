@@ -34,6 +34,7 @@ class PaginationForm(forms.Form):
     order = forms.ChoiceField(
         required=False,
         choices=[
+            ("", "Select Order"),
             ("asc", "Ascending"),
             ("desc", "Descending"),
         ],
@@ -48,7 +49,10 @@ class PaginationForm(forms.Form):
             self.fields.pop("order_by")
             self.fields.pop("order")
         else:
-            self.fields["order_by"].choices = order_by_choices
+            self.fields["order_by"].choices = [
+                ("", "Order By"),
+                *order_by_choices,
+            ]
         if not has_search:
             self.fields.pop("search")
 

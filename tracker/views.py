@@ -27,45 +27,78 @@ from .models import Author, Commit, Repository
 class DashboardView(TemplateView):
     template_name = "dashboard.html"
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+    _author = None
 
+    def get_author(self):
+        if self._author is False:
+            return None
+        if self._author is None:
+            author_username = self.request.GET.get("author")
+            if not author_username:
+                self._author = False
+            else:
+                self._author = Author.objects.filter(username=author_username).first()
+                if not self._author:
+                    self._author = False
+                    messages.error(self.request, "Author not found")
+        return self._author
+
+    def get_commit_queryset(self):
+        author = self.get_author()
+        if author:
+            return Commit.objects.filter(author=author)
+        return Commit.objects.all()
+
+    def get_repository_queryset(self):
+        author = self.get_author()
+        if author:
+            return Repository.objects.filter(commit__author=author).distinct()
+        return Repository.objects.all()
+
+    def get_generic_stats(self):
+        data = {}
         # Total Repositories
-        context["total_repositories"] = Repository.objects.count()
+        data["total_repositories"] = self.get_repository_queryset().count()
 
         # Total Commits
-        context["total_commits"] = Commit.objects.count()
-
-        # Total Contributors
-        context["total_contributors"] = (
-            Author.objects.filter(commit__isnull=False).distinct().count()
-        )
+        data["total_commits"] = self.get_commit_queryset().count()
 
         # Top Language
-        context["top_language"] = (
-            Repository.objects.values("language")
+        data["top_language"] = (
+            self.get_repository_queryset()
+            .values("language")
             .annotate(language_count=Count("language"))
             .order_by("-language_count")
             .first()
         )
 
+        # Average Commits per Repository
+        total_commits = self.get_commit_queryset().count()
+        total_repositories = self.get_repository_queryset().count()
+        print(total_commits, total_repositories)
+        data["average_commits_per_repo"] = (
+            total_commits / total_repositories if total_repositories else 0
+        )
+
         # Recent Commits
-        context["recent_commits"] = Commit.objects.select_related("author").order_by(
-            "-date"
-        )[:10]
+        data["recent_commits"] = (
+            self.get_commit_queryset().select_related("author").order_by("-date")[:10]
+        )
 
         # Active Repositories
         last_30_days = timezone.now() - timedelta(days=30)
-        context["active_repositories"] = (
-            Commit.objects.filter(date__gte=last_30_days)
+        data["active_repositories"] = (
+            self.get_commit_queryset()
+            .filter(date__gte=last_30_days)
             .values("repository__name")
             .annotate(commit_count=Count("id"))
             .order_by("-commit_count")[:5]
         )
 
         # Commit Frequency
-        context["commit_frequency"] = (
-            Commit.objects.filter(date__gte=last_30_days)
+        data["commit_frequency"] = (
+            self.get_commit_queryset()
+            .filter(date__gte=last_30_days)
             .annotate(date_day=TruncDay("date"))
             .values("date_day")
             .annotate(commit_count=Count("id"))
@@ -73,25 +106,30 @@ class DashboardView(TemplateView):
         )
 
         # Churn Rate
-        churn_rate = Commit.objects.filter(date__gte=last_30_days).aggregate(
-            total_additions=Sum("additions"), total_deletions=Sum("deletions")
+        churn_rate = (
+            self.get_commit_queryset()
+            .filter(date__gte=last_30_days)
+            .aggregate(
+                total_additions=Sum("additions"), total_deletions=Sum("deletions")
+            )
         )
-        context["churn_rate"] = {
-            "total_additions": churn_rate["total_additions"],
-            "total_deletions": churn_rate["total_deletions"],
+        data["churn_rate"] = {
+            "total_additions": churn_rate.get("total_additions", 0) or 0,
+            "total_deletions": churn_rate.get("total_deletions", 0) or 0,
         }
 
-        # Top Contributors
-        context["top_contributors"] = (
-            Commit.objects.filter(date__gte=last_30_days)
-            .values("author__username")
-            .annotate(commit_count=Count("id"))
-            .order_by("-commit_count")[:5]
+        # Commits by Language
+        data["commits_by_language"] = (
+            self.get_repository_queryset()
+            .values("language")
+            .annotate(commit_count=Count("commit"))
+            .order_by("-commit_count")
         )
 
         # Repository Comparison
-        context["repository_comparison"] = (
-            Repository.objects.annotate(
+        data["repository_comparison"] = (
+            self.get_repository_queryset()
+            .annotate(
                 total_commits=Count("commit"),
                 total_contributors=Count("commit__author", distinct=True),
                 churn_rate=Sum("commit__additions") + Sum("commit__deletions"),
@@ -100,6 +138,11 @@ class DashboardView(TemplateView):
             .order_by("-total_commits")
         )
 
+        return data
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(self.get_generic_stats())
         return context
 
 
@@ -127,11 +170,19 @@ class TokenListView(LoginRequiredMixin, BaseListView):
     create_button_label = "Create Token"
     list_display = ["label", "service", "is_active"]
     can_delete = True
+    searchable_fields = [
+        "label",
+    ]
+    order_by_choices = [
+        ("label", "Label"),
+        ("is_active", "Active"),
+    ]
 
     def get_queryset(self):
-        if self.request.user.has_perm("can_view_all_git_tokens"):
-            return self.model.objects.all()
-        return self.model.objects.filter(user=self.request.user)
+        queryset = super().get_queryset()
+        if not self.request.user.has_perm("can_view_all_git_tokens"):
+            queryset = queryset.filter(user=self.request.user)
+        return queryset
 
 
 @login_required
@@ -147,7 +198,14 @@ def delete_token(request: HttpRequest, pk: int):
 
 class RepositoryListView(LoginRequiredMixin, BaseListView):
     model = models.Repository
-    list_display = ["name", "owner", "private", "language", "last_synced_at"]
+    list_display = [
+        "name",
+        "owner",
+        "private",
+        "language",
+        "default_branch",
+        "last_synced_at",
+    ]
     can_create = False
     can_edit = False
     actions = [
@@ -164,11 +222,20 @@ class RepositoryListView(LoginRequiredMixin, BaseListView):
             tooltip="View Analysis",
         ),
     ]
+    searchable_fields = ["name", "owner__username", "description", "language"]
+    order_by_choices = [
+        ("name", "Name"),
+        ("created_at", "Created At"),
+        ("updated_at", "Updated At"),
+        ("pushed_at", "Pushed At"),
+        ("last_synced_at", "Last Synced At"),
+    ]
 
     def get_queryset(self):
+        queryset = super().get_queryset()
         if self.request.user.has_perm("can_view_all_repositories"):
-            return self.model.objects.all()
-        return self.model.objects.filter(users=self.request.user)
+            return queryset
+        return queryset.filter(users=self.request.user)
 
 
 class RepositoryStatsView(DetailView):
@@ -189,10 +256,6 @@ class RepositoryStatsView(DetailView):
         context["commit_frequency"] = commit_frequency
 
         context["commit_count"] = Commit.objects.filter(repository=repository).count()
-
-        # context["contributors_count"] = Author.objects.filter(
-        #     commit__repository=repository
-        # ).distinct().count()
 
         # Top Contributors
         top_contributors = (
@@ -234,24 +297,34 @@ class RepositoryStatsView(DetailView):
 
 class CommitListView(LoginRequiredMixin, BaseListView):
     model = models.Commit
-    list_display = ["sha", "repository", "author", "committer", "commited_at"]
+    list_display = [
+        "repository",
+        "message",
+        "author",
+        "committer",
+        "commited_at",
+        "additions",
+        "deletions",
+        "total",
+    ]
     can_create = False
     can_edit = False
     actions = [
         ListAction("View Commit", "bi-eye", models.CommitAction.VIEW_COMMIT_DETAIL),
     ]
-    per_page_options = [5, 10, 25, 50, 100]
-    
-    order_by_choices = [
-        # field name, Label
-        ("commited_at", "Commit Date"),
-    ]
-    
-    # Field lookup for search
     searchable_fields = [
+        "message",
         "repository__name",
         "author__username",
         "committer__username",
+    ]
+
+    order_by_choices = [
+        # field name, Label
+        ("commited_at", "Commit Date"),
+        ("additions", "Additions"),
+        ("deletions", "Deletions"),
+        ("total", "Total Changes"),
     ]
 
     def get_title(self):
