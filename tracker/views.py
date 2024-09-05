@@ -137,7 +137,7 @@ class TokenListView(LoginRequiredMixin, BaseListView):
 @login_required
 def delete_token(request: HttpRequest, pk: int):
     token = models.GitToken.objects.get(pk=pk)
-    if request.user == token.user or request.user.has_perm('can_delete_all_git_tokens'):
+    if request.user == token.user or request.user.has_perm("can_delete_all_git_tokens"):
         messages.success(request, f"Token {token.label} deleted successfully.")
         token.delete()
     else:
@@ -239,6 +239,19 @@ class CommitListView(LoginRequiredMixin, BaseListView):
     can_edit = False
     actions = [
         ListAction("View Commit", "bi-eye", models.CommitAction.VIEW_COMMIT_DETAIL),
+    ]
+    per_page_options = [5, 10, 25, 50, 100]
+    
+    order_by_choices = [
+        # field name, Label
+        ("commited_at", "Commit Date"),
+    ]
+    
+    # Field lookup for search
+    searchable_fields = [
+        "repository__name",
+        "author__username",
+        "committer__username",
     ]
 
     def get_title(self):

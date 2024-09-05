@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Any
 
 from django.contrib.messages.views import SuccessMessageMixin
@@ -5,6 +6,9 @@ from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.views.generic import CreateView, ListView, UpdateView
+from django.db.models import Q
+
+from core.forms import PaginationForm
 
 # Create your views here.
 
@@ -77,6 +81,9 @@ class BaseListView(ListView):
     actions = []
     paginate_by = 25
     per_page_options = [10, 25, 50, 100]
+    filter_form_class = PaginationForm
+    order_by_choices = None
+    searchable_fields = []
 
     def get_title(self):
         if self.title:
@@ -152,6 +159,45 @@ class BaseListView(ListView):
                 )
             raise e
 
+    def get_filter_form_kwargs(self):
+        kwargs = {}
+        if self.order_by_choices is not None:
+            kwargs["order_by_choices"] = self.order_by_choices
+        return kwargs
+
+    def get_filter_form(self):
+        return self.filter_form_class(self.request.GET, **self.get_filter_form_kwargs())
+
+    def get_ordering(self) -> Sequence[str]:
+        order_by = self.request.GET.get("order_by")
+        order = self.request.GET.get("order", "asc")
+        if order_by:
+            return [f"{'' if order == 'asc' else '-'}{order_by}"]
+        return super().get_ordering()
+
+    def get_searchable_query(self):
+        search = self.request.GET.get("search")
+        print(type(self.searchable_fields))
+        if not self.searchable_fields or not search:
+            return Q()
+        if isinstance(self.searchable_fields, str):
+            return Q(**{f"{self.searchable_fields}__icontains": search})
+        filters = {}
+        query = Q()
+        if isinstance(self.searchable_fields, dict):
+            for field, lookup in self.searchable_fields.items():
+                filters[f"{field}__{lookup}"] = search
+        elif isinstance(self.searchable_fields, Sequence):
+            for field in self.searchable_fields:
+                filters[f"{field}__icontains"] = search
+        for key, value in filters.items():
+            query |= Q(**{key: value})
+        return query
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        return queryset.filter(self.get_searchable_query())
+
     def get_context_data(self, **kwargs) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
         properties = [
@@ -175,7 +221,10 @@ class BaseListView(ListView):
                 context[prop] = getattr(self, prop)
         paginator = context["paginator"]
         total_pages = paginator.num_pages
-        current_page = int(self.request.GET.get("page", 1))
+        current_page = self.request.GET.get("page", 1)
+        if not current_page:
+            current_page = 1
+        current_page = int(current_page)
         if current_page > total_pages:
             # Redirect to the last page if the current page exceeds the total number of pages
             context["page_obj"] = paginator.page(total_pages)
@@ -194,4 +243,5 @@ class BaseListView(ListView):
                 page_range.append("...")
             page_range.append(total_pages)
         context["page_range"] = page_range
+        context["filter_form"] = self.get_filter_form()
         return context

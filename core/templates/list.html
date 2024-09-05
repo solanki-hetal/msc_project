@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load crispy_forms_tags %}
 {% load extras %}
 {% block content %}
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
@@ -11,6 +12,9 @@
         </div>
         {% endif %}
     </div>
+
+    {% crispy filter_form filter_form.helper %}
+
     <div class="table-responsive mt-3">
         <table class="table table-bordered">
             <thead>
@@ -117,14 +121,14 @@
                         </li>
                     {% else %}
                         <li class="page-item">
-                            <a class="page-link" href="?{% if request.GET.per_page %}per_page={{ request.GET.per_page }}&{% endif %}page={{ num }}">{{ num }}</a>
+                            <a class="page-link" data-page="{{ num }}" href="?{% if request.GET.per_page %}per_page={{ request.GET.per_page }}&{% endif %}page={{ num }}">{{ num }}</a>
                         </li>
                     {% endif %}
                 {% endfor %}
 
                 {% if page_obj.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="?{% if request.GET.per_page %}per_page={{ request.GET.per_page }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+                        <a class="page-link" data-page="{{ page_obj.next_page_number }}" href="?{% if request.GET.per_page %}per_page={{ request.GET.per_page }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
                     </li>
                 {% endif %}
             </div>
@@ -134,10 +138,27 @@
 
 {% block core_footer %}
     <script>
+        const submitForm = () => {
+            document.getElementById('id_per_page').value = document.getElementById('per_page').value;
+            document.querySelector('#paginationFormTest').submit();
+        }
         document.addEventListener('DOMContentLoaded', function() {
             const itemsPerPage = document.getElementById('per_page');
-            itemsPerPage.addEventListener('change', function() {
-                document.getElementById('paginationForm').submit();
+            itemsPerPage.addEventListener('change', submitForm);
+
+            document.querySelectorAll('a .page-link').forEach(function(link) {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const page = this.getAttribute('data-page');
+                    document.getElementById('id_page').value = page;
+                    submitForm();
+                });
+            });
+
+            document.getElementById('button-id-')?.addEventListener('click', (e) => {
+                e.preventDefault()
+                document.getElementById('id_page').value = 1
+                submitForm();
             });
         });
     </script>
