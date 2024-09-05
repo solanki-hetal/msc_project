@@ -41,6 +41,7 @@ class PaginationForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         order_by_choices = kwargs.pop("order_by_choices", [])
+        has_search = kwargs.pop("has_search", False)
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         if not order_by_choices:
@@ -48,11 +49,15 @@ class PaginationForm(forms.Form):
             self.fields.pop("order")
         else:
             self.fields["order_by"].choices = order_by_choices
+        if not has_search:
+            self.fields.pop("search")
+
         self.helper.form_method = "GET"
         self.helper.form_id = "paginationFormTest"
         self.helper.field_template = "bootstrap5/layout/inline_field.html"
         self.helper.form_class = "row row-cols-lg-auto g-3 align-items-center"
-        self.helper.layout = Layout(
-            *self.fields,
-            Button("", "Submit", css_class="btn btn-primary"),
-        )
+        if ["page", "per_page"] != list(self.fields.keys()):
+            self.helper.layout = Layout(
+                *self.fields,
+                Button("", "Submit", css_class="btn btn-primary"),
+            )

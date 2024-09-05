@@ -163,6 +163,7 @@ class BaseListView(ListView):
         kwargs = {}
         if self.order_by_choices is not None:
             kwargs["order_by_choices"] = self.order_by_choices
+        kwargs['has_search'] = bool(self.searchable_fields)
         return kwargs
 
     def get_filter_form(self):
