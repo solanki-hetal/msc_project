@@ -144,6 +144,9 @@ class CommitFile(models.Model):
     deletions = models.BigIntegerField(default=0)
     changes = models.BigIntegerField(default=0)
     patch = models.TextField(null=True, blank=True)
+    
+    def __str__(self) -> str:
+        return self.filename
 
     class Meta:
         verbose_name_plural = "Commit Files"
@@ -156,6 +159,9 @@ class CommitAnalysis(models.Model):
     commit_type = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"Quality: {self.quality}, Type: {self.commit_type}"
 
 
 class Anomaly(models.Model):
@@ -187,4 +193,4 @@ class Notification(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Notification for {self.user.username} - {self.anomaly}"
+        return f"Notification for {self.instructor.username} - {self.anomaly}"
