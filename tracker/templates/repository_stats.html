@@ -18,7 +18,6 @@
 <h1 class="my-4">{{ repository.name }} - Repository Statistics</h1>
 
 <div class="row">
-
   <!-- Total Commits -->
   <div class="col-md-6">
     <div class="card text-center">
@@ -37,7 +36,6 @@
       </div>
     </div>
   </div>
-
 </div>
 
 <div class="row mt-4">
@@ -79,13 +77,13 @@
     </div>
   </div>
 
-  <!-- Churn Rate Chart -->
+  <!-- Commit Time Distribution Chart -->
   <div class="col-md-6">
     <div class="card">
-      <div class="card-header">Churn Rate</div>
+      <div class="card-header">Commit Time Distribution</div>
       <div class="card-body">
         <div class="chart-container">
-          <canvas id="churnRateChart"></canvas>
+          <canvas id="commitTimeDistributionChart"></canvas>
         </div>
       </div>
     </div>
@@ -93,13 +91,13 @@
 </div>
 
 <div class="row mt-4">
-  <!-- Commit Time Distribution Chart -->
+  <!-- Churn Rate Chart -->
   <div class="col-md-12">
     <div class="card">
-      <div class="card-header">Commit Time Distribution</div>
+      <div class="card-header">Churn Rate</div>
       <div class="card-body">
         <div class="chart-container">
-          <canvas id="commitTimeDistributionChart"></canvas>
+          <canvas id="churnRateChart"></canvas>
         </div>
       </div>
     </div>

@@ -75,7 +75,6 @@ class DashboardView(TemplateView):
         # Average Commits per Repository
         total_commits = self.get_commit_queryset().count()
         total_repositories = self.get_repository_queryset().count()
-        print(total_commits, total_repositories)
         data["average_commits_per_repo"] = (
             total_commits / total_repositories if total_repositories else 0
         )

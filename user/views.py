@@ -5,12 +5,14 @@ from django.views.generic.edit import FormView
 from user.forms import UserCreationForm, UserLoginForm
 from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib.auth import logout
+from django.contrib import messages
 
 # Create your views here.
 
 
 def logout_user(request):
     logout(request)
+    messages.success(request, "You are successfully logged out")
     return redirect("tracker:dashboard")
 
 
