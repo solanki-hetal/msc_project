@@ -41,6 +41,8 @@ class DashboardView(TemplateView):
                 if not self._author:
                     self._author = False
                     messages.error(self.request, "Author not found")
+                else:
+                    messages.success(self.request, f"Showing stats for {author_username}")
         return self._author
 
     def get_commit_queryset(self):
