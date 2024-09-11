@@ -4,6 +4,9 @@ from django import forms
 
 
 class TokenForm(BaseModelForm):
+    '''
+    Form to create a new token
+    '''
 
     token = forms.CharField()
 

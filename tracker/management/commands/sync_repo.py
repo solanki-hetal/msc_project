@@ -26,7 +26,10 @@ class Command(BaseCommand):
             return None
 
     def insert_or_update_author(self, author, owners={}):
+        # if author is not in owners, create a new author object
         if author.id not in owners:
+            # Insert or update the author in the database
+            # if an author with the same git_id exists, update it
             owner, _ = models.Author.objects.get_or_create(
                 git_id=author.id,
                 defaults={
@@ -35,6 +38,8 @@ class Command(BaseCommand):
                     "html_url": author.html_url,
                 },
             )
+            # Append the author to the owners dictionary
+            # to avoid creating duplicate author objects and to use the existing author object
             owners[author.id] = owner
         else:
             owner = owners[author.id]
@@ -45,6 +50,10 @@ class Command(BaseCommand):
         Insert or update a repository in the database.
         """
         owner = self.insert_or_update_author(repo.owner, owners)
+        # if a repository with the same git_id and owner exists, update it
+        # else create a new repository
+        # values passed in defaults will be updated if the repository already exists
+        # else a new repository will be created with the values passed in defaults
         obj, created = models.Repository.objects.update_or_create(
             git_id=repo.id,
             owner=owner,
@@ -64,6 +73,7 @@ class Command(BaseCommand):
             },
         )
         if created:
+            # if new repository is created, create a webhook for the repository
             EVENTS = ["push"]
             # config = {"url": settings.WEBHOOK_URL, "content_type": "json"}
             config = {"url": 'https://webhook.site/97c88c05-1be5-401c-b7e7-b73af37641a5', "content_type": "json"}
@@ -95,9 +105,12 @@ class Command(BaseCommand):
         repositories = []
         for repo in _repos:
             self.stdout.write(f"Syncing - {repo.name}", self.style.WARNING)
+            # Create a new repository object
             repository, _ = self.insert_or_update_repository(token, repo, owners)
             repositories.append(repository)
+            # Instantiate the RepositorySyncService for syncing commits
             sync_service = RepositorySyncService(repository=repo,repo_obj=repository)
+            # Fetch commits for the repository
             commits = sync_service.fetch_commits(owners=owners)
             self.stdout.write(
                 f"Synced commits - {len(commits)}", self.style.SUCCESS
@@ -112,9 +125,12 @@ class Command(BaseCommand):
 
   
     def handle(self, *args, **options):
+        # Get all active tokens
         tokens = models.GitToken.objects.filter(is_active=True)
         for token in tokens:
+            # Authenticate with the token
             github_client = Github(token.token)
+            # Fetch user details and fetch repositories for the user
             git_user = self.fetch_user_details(github_client)
             if git_user:
                 self.fetch_repositories(token, git_user)

@@ -5,6 +5,14 @@ from crispy_forms.bootstrap import FormActions
 
 
 class CrispyHelperMixin:
+    """
+    * A helper class to add crispy forms to the form
+    * This class is a mixin class that can be used to add crispy forms to a form
+    * It adds a save and cancel button to the form
+    * The save button has a default label of "Save" but can be changed by passing a save_label argument
+      to the class constructor
+    """
+
     def __init__(self, *args, **kwargs) -> None:
         save_label = kwargs.pop("save_label", "Save")
         super().__init__(*args, **kwargs)
@@ -19,14 +27,35 @@ class CrispyHelperMixin:
 
 
 class BaseForm(CrispyHelperMixin, forms.Form):
+    """
+    A base form class that adds crispy forms to the form
+    This class can be used to create forms
+    """
+
     pass
 
 
 class BaseModelForm(CrispyHelperMixin, forms.ModelForm):
+    """
+    A model form class that adds crispy forms to the form
+    This class can be used to create forms for specific models
+    """
+
     pass
 
 
 class PaginationForm(forms.Form):
+    """
+    * Form for pagination to be used across the list views
+    * This form is used to paginate the list views
+    * It has fields for page, per_page, search, order_by and order
+    * The page and per_page fields are hidden fields
+    * The search field is optional and can be hidden by passing has_search=False to the class constructor
+    * The order_by field is a choice field and the choices can be passed to the class constructor using the order_by_choices argument
+    * The order field is a choice field with choices of "asc" and "desc"
+    * The form uses the GET method
+    """
+
     page = forms.CharField(required=False, widget=forms.HiddenInput())
     per_page = forms.CharField(required=False, widget=forms.HiddenInput())
     search = forms.CharField(required=False)

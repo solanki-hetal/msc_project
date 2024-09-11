@@ -9,11 +9,17 @@ from tracker import models
 
 
 class RepositorySyncService:
+    """
+    A service class to sync repositories and commits
+    """
 
     repository: Repository
     repo_obj: models.Repository
 
     def insert_or_update_author(self, author, owners={}):
+        """
+        A method to insert or update an author in the database
+        """
         if author.id not in owners:
             owner, _ = models.Author.objects.get_or_create(
                 git_id=author.id,
@@ -89,6 +95,7 @@ class RepositorySyncService:
             git_commits = self.repository.get_commits()
             _commits = []
             for _commit in git_commits:
+                # Create or update author and committer
                 author = (
                     self.insert_or_update_author(_commit.author, self.owners)
                     if _commit.author
@@ -99,6 +106,8 @@ class RepositorySyncService:
                     if _commit.committer
                     else None
                 )
+                # Create or update commit
+                #  if a commit with the same sha exists, update it
                 commit, _ = models.Commit.objects.update_or_create(
                     repository=self.repo_obj,
                     sha=_commit.sha,
@@ -114,6 +123,7 @@ class RepositorySyncService:
                         "total": _commit.stats.total,
                     },
                 )
+                # Create file entries for the commit
                 for file in _commit.files:
                     models.CommitFile.objects.update_or_create(
                         commit=commit,

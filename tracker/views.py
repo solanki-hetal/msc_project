@@ -148,32 +148,51 @@ class DashboardView(TemplateView):
 
 
 class TokenCreateView(LoginRequiredMixin, BaseCreateView):
+    '''
+    A view to create a new token
+    
+    '''
     form_class = forms.TokenForm
     model = models.GitToken
     success_url = reverse_lazy("tracker:gittoken_list")
 
     def form_valid(self, form):
+        # set the user to the current user
         form.instance.user = self.request.user
         return super().form_valid(form)
 
 
 class TokenEditView(LoginRequiredMixin, BaseUpdateView):
+    '''
+    A view to edit a token
+    '''
     form_class = forms.TokenForm
     model = models.GitToken
     success_url = reverse_lazy("tracker:gittoken_list")
 
     def get_queryset(self):
+        # show only the tokens of the current user
         return self.model.objects.filter(user=self.request.user)
 
 
+
+
 class TokenListView(LoginRequiredMixin, BaseListView):
+    '''
+    A view to list all the tokens
+    '''
     model = models.GitToken
+    # Override the create button label
     create_button_label = "Create Token"
     list_display = ["label", "service", "is_active"]
+    # show the delete button
     can_delete = True
+    # User can search by label
     searchable_fields = [
         "label",
     ]
+    
+    # User can order by label and is_active
     order_by_choices = [
         ("label", "Label"),
         ("is_active", "Active"),
@@ -181,6 +200,7 @@ class TokenListView(LoginRequiredMixin, BaseListView):
 
     def get_queryset(self):
         queryset = super().get_queryset()
+        # if the user does not have the permission to view all tokens, show only the tokens of the current user
         if not self.request.user.has_perm("can_view_all_git_tokens"):
             queryset = queryset.filter(user=self.request.user)
         return queryset
@@ -188,17 +208,27 @@ class TokenListView(LoginRequiredMixin, BaseListView):
 
 @login_required
 def delete_token(request: HttpRequest, pk: int):
+    '''
+    A view to delete a token by id
+    '''
     token = models.GitToken.objects.get(pk=pk)
+    # if the user is the owner of the token or has the permission to delete all tokens, delete the token
     if request.user == token.user or request.user.has_perm("can_delete_all_git_tokens"):
+        # add a success message
         messages.success(request, f"Token {token.label} deleted successfully.")
         token.delete()
     else:
+        # if the user does not have the permission to delete the token, show an error message
         messages.error(request, "You do not have permission to delete this token")
     return redirect("tracker:gittoken_list")
 
 
 class RepositoryListView(LoginRequiredMixin, BaseListView):
+    '''
+    A view to list all the repositories
+    '''
     model = models.Repository
+    # Show following fields in the list
     list_display = [
         "name",
         "owner",
@@ -207,15 +237,20 @@ class RepositoryListView(LoginRequiredMixin, BaseListView):
         "default_branch",
         "last_synced_at",
     ]
+    # Disable the create button
     can_create = False
+    # Disable the edit button
     can_edit = False
+    # User can perform the following actions
     actions = [
+        #  View the commits of the repository
         ListAction(
             "Commits",
             "bi-eye",
             models.RepositoryAction.COMMITS,
             tooltip="View Commits",
         ),
+        #  View the analysis of the repository
         ListAction(
             "Analysis",
             "bi-graph-up-arrow",
@@ -223,6 +258,7 @@ class RepositoryListView(LoginRequiredMixin, BaseListView):
             tooltip="View Analysis",
         ),
     ]
+    # User can search by name, owner, description and language
     searchable_fields = ["name", "owner__username", "description", "language"]
     order_by_choices = [
         ("name", "Name"),
@@ -234,12 +270,16 @@ class RepositoryListView(LoginRequiredMixin, BaseListView):
 
     def get_queryset(self):
         queryset = super().get_queryset()
+        #  if the user has the permission to view all repositories, show all the repositories	
         if self.request.user.has_perm("can_view_all_repositories"):
             return queryset
         return queryset.filter(users=self.request.user)
 
 
 class RepositoryStatsView(DetailView):
+    '''
+    A view to show the statistics of a repository
+    '''
     model = Repository
     template_name = "repository_stats.html"
     context_object_name = "repository"
@@ -247,7 +287,8 @@ class RepositoryStatsView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         repository = self.object
-
+        # Commit Frequency
+        # Get the count of commits per day
         commit_frequency = (
             Commit.objects.filter(repository=repository)
             .values("date__date")
@@ -256,10 +297,12 @@ class RepositoryStatsView(DetailView):
         )
         context["commit_frequency"] = commit_frequency
 
+		# Total Commits for the repository
         context["commit_count"] = Commit.objects.filter(repository=repository).count()
 
         # Top Contributors
         top_contributors = (
+            # Get the top contributors of the repository
             Commit.objects.filter(repository=repository, author__isnull=False)
             .values("author__username")
             .annotate(commit_count=Count("id"))
@@ -269,15 +312,18 @@ class RepositoryStatsView(DetailView):
         context["contributors_count"] = len(top_contributors)
 
         # Commit Size Distribution
+        # Find the average, max and min commit size
         size_distribution = Commit.objects.filter(repository=repository).aggregate(
             average_size=Avg("total"), max_size=Max("total"), min_size=Min("total")
         )
         context["size_distribution"] = size_distribution
 
+
+		# Get total additions and deletions for the repository
         churn_data = Commit.objects.filter(repository=repository).aggregate(
             additions=Sum("additions"), deletions=Sum("deletions")
         )
-
+		# if the data is not present, set it to 0
         churn_rate = (churn_data.get("additions") or 0) + (
             churn_data.get("deletions") or 0
         )
@@ -285,6 +331,7 @@ class RepositoryStatsView(DetailView):
 
         # Commit Time Distribution
         time_distribution = (
+            # Get when the commits were made by the hour
             Commit.objects.filter(repository=repository)
             .annotate(hour=ExtractHour(F("commited_at")))
             .values("hour")
@@ -297,6 +344,9 @@ class RepositoryStatsView(DetailView):
 
 
 class CommitListView(LoginRequiredMixin, BaseListView):
+    '''
+    A view to list all the commits of a repository
+    '''
     model = models.Commit
     list_display = [
         "repository",
@@ -308,9 +358,13 @@ class CommitListView(LoginRequiredMixin, BaseListView):
         "deletions",
         "total",
     ]
+    # User cannot create a new commit
     can_create = False
+    # User cannot edit a commit
     can_edit = False
+    
     actions = [
+		# View the commit details
         ListAction("View Commit", "bi-eye", models.CommitAction.VIEW_COMMIT_DETAIL),
     ]
     searchable_fields = [
@@ -329,26 +383,35 @@ class CommitListView(LoginRequiredMixin, BaseListView):
     ]
 
     def get_title(self):
+        # Get the name of the repository
         repository_name = models.Repository.objects.get(
             pk=self.kwargs["repository_id"]
         ).full_name
         return f'Showing commits for "{repository_name}"'
 
     def get_queryset(self) -> QuerySet[Any]:
+        # Filter the commits by the repository id in the URL passed through the kwargs/URL parameters
         return super().get_queryset().filter(repository_id=self.kwargs["repository_id"])
 
 
 class CommitDetailView(LoginRequiredMixin, BaseListView):
+    '''
+    Show the details of a commit
+    '''
     model = models.CommitFile
     list_display = ["filename", "status", "additions", "deletions", "changes"]
     can_create = False
     can_edit = False
 
     def get_queryset(self) -> QuerySet[Any]:
+        # Filter the commit files by the commit id in the URL passed through the kwargs/URL parameters
         return super().get_queryset().filter(commit_id=self.kwargs["commit_id"])
 
 
 class AnomalyListView(LoginRequiredMixin, BaseListView):
+    '''
+    List of all the anomalies present
+    '''
     model = models.Anomaly
     list_display = ["repository", "author", "anomaly_type", "description"]
     can_create = False
@@ -357,6 +420,9 @@ class AnomalyListView(LoginRequiredMixin, BaseListView):
 
 
 class NotificationListView(LoginRequiredMixin, BaseListView):
+    '''
+    List of all the notifications
+    '''
     model = models.Notification
     list_display = [
         "anomaly",
@@ -371,27 +437,37 @@ class NotificationListView(LoginRequiredMixin, BaseListView):
 
 @csrf_exempt
 def webhook_listener_view(request: HttpRequest):
+    '''
+    A webhook listener to listen to the events from the GitHub webhook
+    '''
+    # get the event and hook id from the headers
     event = request.headers.get("X-GitHub-Event", "")
     hook_id = int(request.headers.get("X-GitHub-Hook-ID", ""))
     if not event:
         raise Exception("Event not found")
     if not hook_id:
         raise Exception("Hook ID not found")
+    # get the repository from the webhook id
     repository = Repository.objects.filter(webhook_id=hook_id).first()
     if not repository:
         raise Exception("Repository not found")
     repository: Repository
+    # Find token for the repository
     token = models.GitToken.objects.filter(
         user__in=repository.users.all(), is_active=True
     ).first()
     if not token:
         raise Exception("No active token found")
+    # Create a GitHub client
     client = Github(token.token)
+    # Fetch the repository object from the GitHub API
     git_repository = client.get_repo(repository.full_name)
     data = json.loads(request.body.decode("utf-8"))
     current_branch = data.get("ref").split("/")[2]
+    # if the default branch of the repository does not match the current branch received in webhook payload, raise an exception
     if repository.default_branch != current_branch:
         raise Exception("Tracking branch does not match")
+    # Sync the repository with the local database
     sync_service = RepositorySyncService(repository=git_repository, repo_obj=repository)
     sync_service.fetch_commits()
     return HttpResponse("OK")

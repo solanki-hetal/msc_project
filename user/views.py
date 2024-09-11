@@ -23,6 +23,7 @@ class LoginView(FormView, SuccessMessageMixin):
     success_message = "You are successfully logged in"
 
     def get_success_url(self) -> str:
+        # if the next parameter is in the request, return the next parameter
         if "next" in self.request.GET:
             return self.request.GET["next"]
         return super().get_success_url()

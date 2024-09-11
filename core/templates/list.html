@@ -4,6 +4,7 @@
 {% block content %}
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
         <h1 class="h2">{{ title }}</h1>
+        {% comment %} if can_create is true show the create action {% endcomment %}
         {% if can_create %}
         <div class="btn-toolbar mb-2 mb-md-0">
             <div class="btn-group me-2">
@@ -12,13 +13,14 @@
         </div>
         {% endif %}
     </div>
-
+    {% comment %} Show pagination/filter form here {% endcomment %}
     {% crispy filter_form filter_form.helper %}
 
     <div class="table-responsive mt-3">
         <table class="table table-bordered">
             <thead>
               <tr>
+                {% comment %} Loop through fields and render them {% endcomment %}
                 {% for f in list_display %}
                 <th scope="col">{{ field_labels|get_value:f }}</th>
                 {% endfor %}
@@ -34,10 +36,12 @@
               </tr>
             </thead>
             <tbody>
+            {% comment %} Loop through each row and render {% endcomment %}
             {% for object in object_list %}
               <tr>
                 {% for f in list_display %}
                 <td>
+                    {% comment %} If field is present in boolean_fields render it with Icon {% endcomment %}
                     {% if f in boolean_fields %}
                         {% if object|get_property:f %}
                             <i class="bi bi-check-circle-fill me-2 text-success"></i>
@@ -49,6 +53,7 @@
                     {% endif %}
                 </td>
                 {% endfor %}
+                {% comment %} Show Edit Action {% endcomment %}
                 {% if can_edit %}
                 <td>
                     <a class="text-primary text-decoration-none" 
@@ -61,6 +66,7 @@
                     </a>
                 </td>
                 {% endif %}
+                {% comment %} Render Delete Action {% endcomment %}
                 {% if can_delete %}
                 <td>
                     <a class="text-danger text-decoration-none" href="{{ object.get_delete_url }}" 
@@ -72,6 +78,7 @@
                     </a>
                 </td>
                 {% endif %}
+                {% comment %} Render the actions if present {% endcomment %}
                 {% for action in actions %}
                 <td>
                     <a  class="text-primary text-decoration-none {{ action.class_name }}" 
@@ -91,6 +98,8 @@
             </tbody>
           </table>
     </div>
+    <!-- Pagination -->
+    
     <div class="d-flex justify-content-between align-items-center pt-2">
         <!-- Per Page Dropdown -->
         <form method="GET" id="paginationForm" class="d-inline">

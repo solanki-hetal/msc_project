@@ -29,6 +29,11 @@
                 </div>
                 <div class="offcanvas-body d-md-flex flex-column p-0 pt-lg-3 overflow-y-auto">
                 <ul class="nav flex-column">
+                    {% comment %} 
+                    The navigation variable is passed from the view to the template.
+                    It is a list of Navigation objects that contain the name, url, icon, and active attributes.
+                    It also contains the active attribute to determine which navigation item is active.
+                    {% endcomment %}
                     {% for nav in navigation %}
                     <li class="nav-item">
                     <a class="nav-link d-flex align-items-center gap-2 {% if nav.active %}active{% endif %}" aria-current="page" href="{% url nav.url %}">
@@ -44,6 +49,11 @@
 
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
                   {% if alerts %}
+                  {% comment %} 
+                    The alerts variable is passed from the view to the template.
+                    It is a list of Alert objects that contain the class_name, icon, and message attributes.
+                    The class_name attribute is used to determine the alert class (e.g., alert-success, alert-danger).
+                {% endcomment %}
                   <div class="messages  mt-2">
                       {% for alert in alerts %}
                       <div class="alert {{alert.class_name}} d-flex"> 
